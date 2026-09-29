@@ -45,3 +45,9 @@ php artisan boost:install
 
 Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
 </laravel-boost-guidelines>
+
+# Project Documentation
+
+## Database Schema
+
+The ER diagram at @docs/database/er-diagram.md is the source of truth for the database schema. Follow it when you write or change migrations, Eloquent models, relationships, factories, or seeders. If a schema change is needed, update the diagram in the same change.
