@@ -86,7 +86,18 @@ Do not invent a fake customer name from the email.
 
 ### BE-AUTH-02: Sign in and sign out
 
-Both roles sign in using email/password.
+Both roles sign in using email/password, through separate endpoints:
+- Customers: `POST /auth/login` (and the other `/auth/*` endpoints).
+- Admins: `POST /admin/auth/login` (and the other `/admin/auth/*` endpoints).
+
+Each sign-in endpoint accepts only its own role: an admin account cannot
+sign in through the customer endpoint, and a customer account cannot sign
+in through the admin endpoint. Return the same invalid-credentials
+response in both cases, so the endpoint does not reveal which role an
+email belongs to.
+
+Password-reset links must open the matching frontend: the customer reset
+page for customers, the admin reset page for admins.
 
 Return authenticated user information, roles, account status,
 and a derived profile-completion indicator.
@@ -598,21 +609,27 @@ Welcome emails and tracking-update emails remain unconfirmed.
 
 Prefix: /api/v1
 
-Public/auth:
-POST /auth/register
-POST /auth/login
-POST /auth/forgot-password
-POST /auth/reset-password
+Customer and admin routes are separate: separate route files, separate
+sign-in endpoints, and separate middleware groups (see
+`docs/backend-architecture.md`, "Route organization"). A customer token
+never reaches an admin route, and an admin token never reaches a customer
+route.
+
+Public (routes/api.php, no session):
 GET  /variants
 GET  /variants/{id}
 GET  /tags
 
-Authenticated:
+Customer — guest (routes/api/customer.php):
+POST /auth/register
+POST /auth/login
+POST /auth/forgot-password
+POST /auth/reset-password
+
+Customer — signed in as customer (routes/api/customer.php):
 GET  /auth/me
 POST /auth/logout
 PUT  /auth/password
-
-Customer:
 POST /customer/profile
 GET  /customer/profile
 PUT  /customer/profile
@@ -630,7 +647,15 @@ GET  /checkout/{order_number}/status
 GET  /customer/orders
 GET  /customer/orders/{order_number}
 
-Admin:
+Admin — guest (routes/api/admin.php):
+POST /admin/auth/login
+POST /admin/auth/forgot-password
+POST /admin/auth/reset-password
+
+Admin — signed in as admin (routes/api/admin.php):
+GET  /admin/auth/me
+POST /admin/auth/logout
+PUT  /admin/auth/password
 Resource endpoints for products, variants and tags.
 Image upload/remove/reorder endpoints for variants.
 GET   /admin/customers
@@ -640,7 +665,7 @@ GET   /admin/orders
 GET   /admin/orders/{order_number}
 PATCH /admin/orders/{order_number}/tracking
 
-Provider:
+Provider (routes/api.php, no session):
 POST /webhooks/razorpay
 
 The webhook uses provider signature verification, not customer login.
@@ -709,7 +734,6 @@ the frontend to match, rather than bending the backend to the mock.
 | Base URL | `/api/v1` | `VITE_API_BASE_URL=http://localhost:8000/api` |
 | Registration | email, password, password_confirmation; profile afterwards | Collects first and last name at sign-up |
 | Customer name | Single `users.name` | `firstName` / `lastName` |
-| Admin sign-in | Shared `/auth/login`; role comes back with the user | Separate `/admin/auth/*` endpoints and admin session |
 | Admin roles | admin only | `AdminUser.role` is `owner` or `staff` |
 | Customer paths | `/customer/profile`, `/customer/addresses`, `/customer/orders`, `/auth/password` | `/account/profile`, `/account/addresses`, `/orders`, `/account/password` |
 | Catalog | `/variants` listing (variants are the cards) | `/products` listing |
