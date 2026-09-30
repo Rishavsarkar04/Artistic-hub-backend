@@ -8,7 +8,7 @@ Identical copies live in `Artistic-hub-backend/docs/` and `Artistic-hub-frontend
 
 ## 0. Project alignment
 
-The backend SRS (`Artistic-hub-backend/docs/backend-srs.md`) is newer and overrides this PRD wherever they conflict; this PRD still applies where the SRS is silent.
+The backend SRS (`Artistic-hub-backend/docs/backend-srs.md`) and frontend SRS (`Artistic-hub-frontend/docs/frontend-srs.md`) are newer and override this PRD wherever they conflict; this PRD still applies where they are silent.
 
 This section maps the PRD onto the actual project. Where it records a decision, that decision replaces the matching "proposed" item further down. Where it lists a conflict, nothing is decided yet: ask before building the affected behavior.
 

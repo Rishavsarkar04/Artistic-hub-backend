@@ -699,7 +699,8 @@ Keep the ER diagram, migrations, models and API contract synchronized.
 ## 17. Frontend alignment
 
 The frontend (`Artistic-hub-frontend/`) was built on mock data before this
-specification. Its API paths live in `src/api/config.ts`. Where it differs,
+specification. Its own requirements are in `Artistic-hub-frontend/docs/frontend-srs.md`,
+whose section 18 lists screen-level differences. Its API paths live in `src/api/config.ts`. Where it differs,
 this specification is the proposed contract; agree each item and then change
 the frontend to match, rather than bending the backend to the mock.
 
