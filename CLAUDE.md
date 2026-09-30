@@ -48,6 +48,10 @@ Boost replaces these bootstrap instructions with guidelines tailored to the appl
 
 # Project Documentation
 
+## Backend Requirements
+
+The backend requirements are in `docs/backend-srs.md`. It overrides the PRD wherever they conflict, and its section 14 is the proposed API contract. Section 16 lists schema gaps to agree before building the affected feature, and section 17 lists where the frontend currently differs. Keep the SRS, the ER diagram, migrations, models and the API in sync.
+
 ## Product Requirements
 
 The product requirements are in `docs/candle-ecommerce-prd.md`. Read it before building a feature, and follow its section 0 ("Project alignment"): it records what is already decided and lists open conflicts between the PRD, the ER diagram and the frontend. Ask before building anything listed there as open. The frontend keeps an identical copy in `Artistic-hub-frontend/docs/`, so update both together.

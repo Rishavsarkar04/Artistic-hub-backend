@@ -8,6 +8,8 @@ Identical copies live in `Artistic-hub-backend/docs/` and `Artistic-hub-frontend
 
 ## 0. Project alignment
 
+The backend SRS (`Artistic-hub-backend/docs/backend-srs.md`) is newer and overrides this PRD wherever they conflict; this PRD still applies where the SRS is silent.
+
 This section maps the PRD onto the actual project. Where it records a decision, that decision replaces the matching "proposed" item further down. Where it lists a conflict, nothing is decided yet: ask before building the affected behavior.
 
 ### Project layout and stack
@@ -26,9 +28,13 @@ This section maps the PRD onto the actual project. Where it records a decision, 
 - **Stock and discounts are in scope:** each variant tracks `stock`, and a lower selling price shows the original struck through. Stock reservation during payment is still undecided (see conflicts).
 - **Variant photos:** ordered by `sort_order`; the lowest is the cover. There is no separate primary-image flag.
 - **Tags:** `tags` (unique `name` and `slug`) linked through `product_variant_tags`. Admins add, rename and delete tags from the product form ("Add or edit tags" dialog), not a separate screen. Renames and deletes apply at once to every product.
-- **Currency:** INR. The admin frontend handles prices as integer paise.
+- **Currency and money:** INR. Money columns stay `decimal` and the API returns them as strings (SRS); Razorpay subunits are used only at the provider boundary. The admin frontend's integer paise must be converted.
+- **Registration and profile (SRS):** sign-up takes only email and password; the customer creates a profile (name, phone, …) after signing in, and needs it before checkout.
+- **Checkout (SRS):** a pending order and pending payment are created before Razorpay; the verified `payment.captured` webhook moves the order from pending to confirmed and deducts stock once. There are no separate checkout tables.
+- **Listing (SRS):** customers browse variants; only active variants of active products with stock above 0 are listed.
 - **Orders:** order and order-item rows snapshot customer, address, product, SKU, photo and prices at purchase; `order_items.product_variant_id` becomes null if the variant is deleted.
 - **Admin order editing:** only the tracking provider (courier) and tracking number. No status buttons, cancel or delete in the admin UI.
+- **Cart:** server-side, one per customer (`carts`, `cart_items` in the ER diagram). Items hold variant and quantity only, with no prices; checkout revalidates price, stock and availability. The frontend cart in browser localStorage stands in until the cart API exists. Whether signed-out visitors keep a browser cart that merges into the server cart on sign-in is still open (CART-01).
 - **Guest behavior:** public browsing; sign-in required for checkout, order confirmation and account pages.
 - **Password reset:** built in the frontend for both customers and admins, with a neutral forgot-password response.
 
@@ -36,18 +42,16 @@ This section maps the PRD onto the actual project. Where it records a decision, 
 
 | Topic | PRD says | ER diagram / code says | Decision needed |
 |---|---|---|---|
-| Money columns | Integer minor units | ER uses `decimal`; admin frontend uses integer paise; shop side still uses whole rupees | Pick one storage type and make the ER, API and both frontends match |
 | Selling price name | "selling price" | ER `selling_price`; admin frontend `effective_price` | Choose one field name for the API |
 | Photo table | `variant_images`, image location | ER `product_variant_photos.path`; frontend `product_variant_images` with `url` and `alt_text` | Choose table and columns; decide whether `alt_text` is kept |
-| Admin roles | Exactly two roles | Frontend `AdminUser.role` is `owner` or `staff` | Drop owner/staff, or confirm sub-roles inside Admin |
+| Admin roles | Exactly two roles (SRS confirms) | Frontend `AdminUser.role` is `owner` or `staff` | Remove owner/staff from the frontend |
 | Customer account state | Active on registration; disabled accounts stay disabled | ER `users.status`: active, blocked, suspended, pending; frontend: active, blocked | Confirm the states and who can change them |
-| Order status | Only "placed"; no manual status changes | ER `orders.status`: pending, confirmed, processing, completed, cancelled, plus `cancellation_reason` and "tracking required when completed"; frontend shows processing, shipped, delivered, cancelled | Decide the status list and what moves an order between states |
-| Pending checkout | Separate `checkouts` / `payment_attempts` before a placed order | ER has `orders` (status pending) and `payments` only | Keep pending orders as the checkout record, or add checkout tables |
-| Payment methods | Razorpay Payment Links, full payment only | ER `payments.method` includes cod, card, upi, bank_transfer, wallet; provider includes stripe and cash | Confirm whether COD or other providers are in scope |
+| Order status | Only "placed"; no manual status changes | ER and SRS: pending → confirmed on verified payment; processing, completed, cancelled have no defined triggers yet; frontend shows processing, shipped, delivered, cancelled | Define the remaining transitions; align the frontend statuses |
+| Payment methods | Razorpay Payment Links, full payment only | ER `payments.method` includes cod, card, upi, bank_transfer, wallet; provider includes stripe and cash. SRS: method is unknown before payment | Make `method` nullable (or add an unknown value); confirm whether COD is in scope |
 | Tax | Must be decided before checkout | ER `orders` has discount and shipping but no tax column; frontend order detail shows tax | Decide whether prices include tax and whether a tax column is needed |
 | Tracking fields | Tracking provider and number | ER `tracking_provider`; frontend and API path use `courier` | Choose one field name |
-| Cart | Proposed server-side cart | Frontend cart is in browser localStorage; ER has no cart tables | Keep the browser cart, or add `carts` / `cart_items` |
-| Supporting tables | Webhook events, tracking audit, notification outbox | Not in the ER diagram | Add them to the ER before payment and email work |
+| Supporting tables | Webhook events, tracking audit, notification outbox | Not in the ER diagram; SRS also needs stock reservations and provider correlation | Add them to the ER before payment and email work |
+| Frontend API contract | — | SRS section 17 lists where the frontend's paths, fields and money format differ | Agree each item, then change the frontend |
 | Store name | Brand still to be confirmed | Repo is "Artistic Hub"; frontend is branded "Ember & Bloom" | Confirm the brand |
 
 ## 1. Objective
@@ -286,7 +290,7 @@ Do not add manual shipped/delivered/cancelled status controls. Tracking data alo
 
 ## 9. Suggested data model
 
-Superseded by `Artistic-hub-backend/docs/database/er-diagram.md`. The table below is the original conceptual model; rows with no ER equivalent yet (carts, checkouts, webhook events, tracking audit, notification outbox) are listed as open conflicts in section 0.
+Superseded by `Artistic-hub-backend/docs/database/er-diagram.md`. The table below is the original conceptual model; rows with no ER equivalent yet (checkouts, webhook events, tracking audit, notification outbox) are listed as open conflicts in section 0.
 
 | Entity | Responsibility and relationships |
 |---|---|

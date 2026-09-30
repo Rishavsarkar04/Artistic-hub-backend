@@ -8,6 +8,7 @@ Source of truth for the Artistic Hub database schema. Migrations in `database/mi
 - `orders` and `order_items` store **snapshots** of customer, address, product, and price data from the time of the order. Never read these values back from the live product or profile tables.
 - `order_items.product_variant_id` is nullable, so order history survives when a variant is deleted.
 - `orders.tracking_number` is required before an order moves to `completed`.
+- Each customer has at most one cart (`carts.customer_profile_id` is unique), and a variant appears once per cart (`cart_items` is unique on `cart_id` + `product_variant_id`); adding it again increases `quantity`. Cart items store **no prices**: checkout reads the current price, stock and active state and asks the customer to reconfirm if anything changed. Paying clears only the quantities that were paid for. Deleting a variant deletes its cart items (cascade); order items keep their snapshot with `product_variant_id` set to null.
 - Money columns are `decimal`. `orders.total_amount = subtotal - discount_amount + shipping_amount`; `order_items.total_amount = subtotal - discount_amount`.
 
 ## Diagram
@@ -123,6 +124,22 @@ erDiagram
         timestamp updated_at
     }
 
+    CARTS {
+        bigint id PK
+        bigint customer_profile_id FK, UK "one cart per customer"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CART_ITEMS {
+        bigint id PK
+        bigint cart_id FK "unique with product_variant_id"
+        bigint product_variant_id FK
+        integer quantity "at least 1"
+        timestamp created_at
+        timestamp updated_at
+    }
+
     ORDERS {
         bigint id PK
         bigint customer_profile_id FK
@@ -202,6 +219,10 @@ erDiagram
     PRODUCT_VARIANTS ||--o{ PRODUCT_VARIANT_PHOTOS : has
     PRODUCT_VARIANTS ||--o{ PRODUCT_VARIANT_TAGS : tagged
     TAGS ||--o{ PRODUCT_VARIANT_TAGS : attached
+
+    CUSTOMER_PROFILES ||--o| CARTS : keeps
+    CARTS ||--o{ CART_ITEMS : contains
+    PRODUCT_VARIANTS ||--o{ CART_ITEMS : added_as
 
     CUSTOMER_PROFILES ||--o{ ORDERS : places
     ORDERS ||--|{ ORDER_ITEMS : contains
