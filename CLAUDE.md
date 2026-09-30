@@ -48,6 +48,10 @@ Boost replaces these bootstrap instructions with guidelines tailored to the appl
 
 # Project Documentation
 
+## Product Requirements
+
+The product requirements are in `docs/candle-ecommerce-prd.md`. Read it before building a feature, and follow its section 0 ("Project alignment"): it records what is already decided and lists open conflicts between the PRD, the ER diagram and the frontend. Ask before building anything listed there as open. The frontend keeps an identical copy in `Artistic-hub-frontend/docs/`, so update both together.
+
 ## Database Schema
 
 The ER diagram at @docs/database/er-diagram.md is the source of truth for the database schema. Follow it when you write or change migrations, Eloquent models, relationships, factories, or seeders. If a schema change is needed, update the diagram in the same change.
