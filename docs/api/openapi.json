@@ -1,0 +1,13 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Artistic Hub API",
+        "version": "0.0.1",
+        "description": "Artistic Hub API: public catalog, customer accounts, cart, checkout and orders, and the admin API under /admin."
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000/api/v1"
+        }
+    ]
+}

@@ -1296,7 +1296,11 @@ Admin endpoints appear under `/admin/...` in the same document.
 - UI: `/docs/api`. JSON: `/docs/api.json`.
 - Configured in `config/scramble.php` (`api_path` is `api/v1`, plus title
   and description). There is no code setup in service providers.
-- Export a file with `php artisan scramble:export`.
+- `php artisan scramble:export` writes the spec to
+  `docs/api/openapi.json` (the `export_path` in `config/scramble.php`).
+  This file is committed: it is the API contract the frontend reads.
+  Re-export it in the same change as any route, Form Request, Resource or
+  enum change, so it never lags behind the code.
 - A future `api/v2` can be added to `api_path` or given its own document
   when it exists.
 

@@ -30,7 +30,9 @@ return [
     /*
      * The path where your OpenAPI specification will be exported.
      */
-    'export_path' => 'api.json',
+    // Committed so the frontend can read the API contract without a running backend.
+    // Re-export after any endpoint change: php artisan scramble:export
+    'export_path' => 'docs/api/openapi.json',
 
     /*
      * Cache configuration for the generated OpenAPI document.
