@@ -16,6 +16,13 @@ return [
     'default' => env('FILESYSTEM_DISK', 'local'),
 
     /*
+    | The disk for uploaded images (customer avatars, product photos), used only through
+    | App\Services\Media\MediaStorageService. `public` (storage/app/public, served at /storage)
+    | in local development; `s3` in production. Files are always publicly readable by URL.
+    */
+    'media_disk' => env('MEDIA_DISK', 'public'),
+
+    /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
@@ -43,7 +50,8 @@ return [
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
-            'throw' => false,
+            // Media writes must fail loudly, not silently return false.
+            'throw' => true,
             'report' => false,
         ],
 
@@ -56,7 +64,9 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
+            // No per-object ACLs: the bucket policy makes the media prefixes publicly readable
+            // (works with "Object Ownership: bucket owner enforced"). AWS_URL can point at a CDN.
+            'throw' => true,
             'report' => false,
         ],
 

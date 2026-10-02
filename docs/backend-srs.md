@@ -159,8 +159,11 @@ Onboarding fields (implemented 2026-10-02):
   be 7 to 15 digits with an optional leading +
 - date_of_birth: optional, Y-m-d, in the past
 - gender: optional; male, female or other
-- avatar: not implemented yet (needs a file-storage decision); the
-  response has avatar_url = null
+- avatar: POST /customer/profile/avatar (multipart `avatar`: JPG, PNG or
+  WebP by content, up to 2 MB, no pixel-size limit) uploads or replaces it;
+  DELETE /customer/profile/avatar removes it. Stored on the media disk
+  (local in development, S3 in production) under a random name; the
+  profile returns `avatar_url` (public URL) or null.
 
 Behavior:
 - POST /customer/profile creates it (201); a second POST returns 409.

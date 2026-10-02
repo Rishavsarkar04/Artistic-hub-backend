@@ -699,6 +699,120 @@
                 }
             }
         },
+        "/customer/profile/avatar": {
+            "post": {
+                "operationId": "customer.v1.profile.avatar.update",
+                "description": "multipart/form-data with an `avatar` file. Replaces any previous avatar. Returns the profile with the new `avatar_url`.",
+                "summary": "Upload or replace the avatar",
+                "tags": [
+                    "ProfileAvatar"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateAvatarRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`CustomerProfileResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CustomerProfileResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "customer.v1.profile.avatar.destroy",
+                "summary": "Remove the avatar",
+                "tags": [
+                    "ProfileAvatar"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CustomerProfileResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CustomerProfileResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/auth/register": {
             "post": {
                 "operationId": "customer.v1.auth.register",
@@ -1188,7 +1302,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Null until avatar upload exists."
+                        "description": "Public URL of the avatar, or null if none."
                     },
                     "created_at": {
                         "type": [
@@ -1523,6 +1637,21 @@
                     "country"
                 ],
                 "title": "UpdateAddressRequest"
+            },
+            "UpdateAvatarRequest": {
+                "type": "object",
+                "properties": {
+                    "avatar": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 2048 kilobytes."
+                    }
+                },
+                "required": [
+                    "avatar"
+                ],
+                "title": "UpdateAvatarRequest"
             },
             "UpdateProfileRequest": {
                 "type": "object",

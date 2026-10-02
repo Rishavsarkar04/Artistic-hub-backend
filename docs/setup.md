@@ -91,6 +91,45 @@ php artisan passport:client --personal --provider=users --name="Artistic Hub per
   `CUSTOMER_TOKEN_LIFETIME_MINUTES` (default 7 days) and
   `ADMIN_TOKEN_LIFETIME_MINUTES` (default 2 days).
 
+## 5b. Uploaded images
+
+Avatars (and later product photos) are stored on the disk named by
+`MEDIA_DISK` in `.env`.
+
+**Local development** (`MEDIA_DISK=public`): files go to
+`storage/app/public` and are served at `http://localhost:8000/storage/...`.
+Create the link once:
+
+```sh
+php artisan storage:link
+```
+
+**Production** (`MEDIA_DISK=s3`): set `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `AWS_BUCKET`, and optionally
+`AWS_URL` (a CloudFront/CDN URL). The app does not set per-object ACLs;
+make the image folders publicly readable with a bucket policy (leave
+"Object Ownership: bucket owner enforced" on, and allow this policy under
+"Block public access"):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "PublicReadMedia",
+    "Effect": "Allow",
+    "Principal": "*",
+    "Action": "s3:GetObject",
+    "Resource": ["arn:aws:s3:::YOUR_BUCKET/avatars/*", "arn:aws:s3:::YOUR_BUCKET/products/*"]
+  }]
+}
+```
+
+The folders listed in `Resource` must match the cases of
+`app/Enums/MediaDirectory.php`; add both together.
+
+The IAM user for `AWS_ACCESS_KEY_ID` needs `s3:PutObject`, `s3:GetObject`
+and `s3:DeleteObject` on the bucket.
+
 ## 6. Create the first admin
 
 There is no admin sign-up page and no default admin password. Create one
@@ -157,6 +196,8 @@ still use mock data until their endpoints are built.
 | `Unknown database 'artistic_hub'` | Create it (step 4). |
 | `No application encryption key` | `php artisan key:generate` |
 | `/docs/api` returns 403 | `APP_ENV` is not `local`. |
+| Avatar URL returns 404 locally | Run `php artisan storage:link`; check `APP_URL` matches the server address. |
+| Upload fails with an S3 error | Check the `AWS_*` values and the IAM permissions (step 5b). |
 | Roles missing after a reset | `php artisan db:seed` (or `migrate:fresh --seed`). |
 | Sign-in fails with "Personal access client not found" | `php artisan passport:client --personal --provider=users` (step 5a). |
 | Sign-in fails with "Key path … does not exist" | `php artisan passport:keys` (step 5a). |

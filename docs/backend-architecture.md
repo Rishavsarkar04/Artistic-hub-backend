@@ -26,13 +26,14 @@ As of 2026-10-02 the backend is a Laravel 13 application with:
 - API routes split into `routes/api.php`, `routes/api/customer.php`
   and `routes/api/admin.php` (section 2.1). Built so far: customer
   register/login/me/logout and admin login/me/logout (section 2.2),
-  customer profile (create/read/update) and addresses
+  customer profile (create/read/update, avatar upload/remove) and addresses
   (list/create/update/set default), and the admin customer list
   (`AdminCustomerQuery`).
   Do not run `php artisan install:api`: it would register `routes/api.php`
   through the `api:` option with its own prefix and overwrite the file.
 - Installed: `laravel/passport` (personal access tokens only),
-  `spatie/laravel-permission` (roles only) and `dedoc/scramble`.
+  `spatie/laravel-permission` (roles only), `dedoc/scramble` and
+  `league/flysystem-aws-s3-v3` (S3 media disk).
   Not installed: the Razorpay SDK.
 - Built: users and customer profiles (both soft-deleting together; users with `status`), roles, `customer_profiles` and
   `customer_addresses` migrations and models; enums `UserStatus`, `Role`,
@@ -850,6 +851,29 @@ Validate currency-specific precision during conversion.
 
 ## 21. File storage
 
+Decided 2026-10-02: uploads go **through the backend** (multipart to our
+API, validated, then written to storage); files are **publicly readable by
+URL**; the disk is `config('filesystems.media_disk')` (`MEDIA_DISK`):
+`public` locally, `s3` in production.
+
+- `App\Services\Media\MediaStorageService` is the only class that touches
+  the media disk: `store($file, $directory)` (random ULID name plus the
+  extension of the real content, never the client's file name),
+  `url($path)`, `delete($path)` (reports failures, never throws).
+- Store only the path in the database (`avatar_path`, later photo
+  `path`); build URLs with `MediaStorageService::url()` in resources.
+- Folders are the cases of `App\Enums\MediaDirectory` (`avatars`,
+  `products`); `store()` only accepts that enum, never a string. The S3
+  bucket policy makes exactly these folders readable (no per-object ACLs),
+  so a new folder means a new enum case and a policy update together.
+- Replace a file in this order: store the new file, save the database
+  row (delete the new file if that fails), then delete the old file.
+- File uploads use POST with multipart/form-data (PHP does not parse
+  multipart bodies on PUT/PATCH).
+- Tests set `filesystems.media_disk` to a fake disk (`Storage::fake`).
+- A force-deleted user's avatar file is not removed (no user-deletion
+  feature yet).
+
 Use Laravel Storage for variant images and avatars.
 
 Rules:
@@ -1447,6 +1471,7 @@ new kind of class appears, add its rule here.
 | Exception | `Exceptions/{Domain}` | the situation, no `Exception` suffix; extend the Laravel exception that gives the right status | `InvalidCredentials`, `AccountNotActive` |
 | Query object | `Queries` | `{Audience}{Thing}Query`, `final class`, read-only (section 26.7) | `AdminCustomerQuery` |
 | List filters | `Data` | `{Thing}ListFilters`, `final readonly class`, built by the list Form Request's `toFilters()` | `CustomerListFilters` |
+| Media folders | `Enums` | `MediaDirectory` cases, one per folder on the media disk | `MediaDirectory::Avatars` |
 | Sort options | `Enums` | `{Thing}Sort`, cases are the allowed `sort` values | `CustomerSort` |
 | Console command | `Console/Commands` | class in PascalCase; signature `{area}:{action}` | `CreateAdmin` / `admin:create` |
 | Model | `Models` | singular; table is the snake_case plural | `CustomerAddress` / `customer_addresses` |

@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Customer\AddressController;
 use App\Http\Controllers\Api\Customer\AddressDefaultController;
 use App\Http\Controllers\Api\Customer\Auth\RegisterController;
 use App\Http\Controllers\Api\Customer\Auth\SessionController;
+use App\Http\Controllers\Api\Customer\ProfileAvatarController;
 use App\Http\Controllers\Api\Customer\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -47,6 +48,9 @@ Route::prefix('api/v1')->middleware('api')->name('customer.v1.')->group(function
             Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');
             Route::post('profile', [ProfileController::class, 'store'])->name('profile.store');
             Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
+            // POST (not PUT): file uploads are sent as multipart/form-data, which PHP only parses on POST.
+            Route::post('profile/avatar', [ProfileAvatarController::class, 'update'])->name('profile.avatar.update');
+            Route::delete('profile/avatar', [ProfileAvatarController::class, 'destroy'])->name('profile.avatar.destroy');
 
             // No delete: address deletion is not in scope.
             Route::get('addresses', [AddressController::class, 'index'])->name('addresses.index');

@@ -15,11 +15,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * A customer's profile, created after their first sign-in. The customer's name lives on `users.name`.
- * `user_id` and the internal `notes` are not fillable.
+ * `user_id`, `avatar_path` (set by CustomerProfileService) and the internal `notes` are not fillable.
  * Soft-deleted and restored together with its user. Its addresses are only reached through the
  * profile, so they are hidden with it. Records that must survive (orders) load it withTrashed().
  */
-#[Fillable(['phone', 'date_of_birth', 'gender', 'avatar_path'])]
+#[Fillable(['phone', 'date_of_birth', 'gender'])]
 #[Hidden(['notes'])]
 class CustomerProfile extends Model
 {
