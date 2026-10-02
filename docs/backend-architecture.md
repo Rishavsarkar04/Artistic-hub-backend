@@ -32,7 +32,7 @@ As of 2026-10-01 the backend is a fresh Laravel 13 application:
 - `spatie/laravel-permission` and the Razorpay SDK are not installed.
 - The base `App\Http\Controllers\Controller` is empty, so it has no
   `authorize()` helper. Use `Gate::authorize()` in controllers.
-- Local database is SQLite; the production engine is not confirmed.
+- Database is MySQL (`DB_CONNECTION=mysql`, database `artistic_hub`), locally and as the planned production engine.
 - Only the default users, cache and jobs migrations exist.
 
 Follow `CLAUDE.md` and the `laravel-best-practices` skill in `.claude/skills/`.

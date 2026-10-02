@@ -16,7 +16,7 @@ This section maps the PRD onto the actual project. Where it records a decision, 
 
 | Part | Location | Stack |
 |---|---|---|
-| Backend API | `Artistic-hub-backend/` | Laravel 13, PHP. Local database is SQLite; production database still to be confirmed. |
+| Backend API | `Artistic-hub-backend/` | Laravel 13, PHP, MySQL. |
 | Frontend | `Artistic-hub-frontend/` | React 19 + TypeScript (strict), Vite, Tailwind CSS v4, shadcn/ui, Zustand, axios. Hosted on Vercel. Currently runs on mock data in `src/data/` until the API exists. |
 | Schema | `Artistic-hub-backend/docs/database/er-diagram.md` | Source of truth for tables and columns. It replaces the conceptual model in section 9. |
 
@@ -384,7 +384,7 @@ Do not block implementation of confirmed catalog/account requirements while thes
 
 | Decision | Proposed default or question | Impact | Status in this project |
 |---|---|---|---|
-| Technology | Laravel backend; React + TypeScript frontend; MySQL. Confirm before scaffolding. | Project architecture | Laravel 13 and React 19 + TypeScript in use. Database: SQLite locally; production engine not confirmed |
+| Technology | Laravel backend; React + TypeScript frontend; MySQL. Confirm before scaffolding. | Project architecture | Decided: Laravel 13, React 19 + TypeScript, MySQL |
 | Payment integration | Razorpay hosted Payment Links, full payment only | Payment flow | Open: ER also lists COD and other methods |
 | Currency and regions | Confirm INR and allowed shipping countries/regions | Launch blocker for checkout | INR decided; regions open |
 | Shipping charges and taxes | Confirm rules and whether prices include taxes | Launch blocker for accurate totals | Open: ER has shipping and discount, no tax |

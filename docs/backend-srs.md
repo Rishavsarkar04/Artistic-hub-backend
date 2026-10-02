@@ -731,7 +731,6 @@ the frontend to match, rather than bending the backend to the mock.
 
 | Topic | This specification | Frontend today |
 |---|---|---|
-| Base URL | `/api/v1` | `VITE_API_BASE_URL=http://localhost:8000/api` |
 | Registration | email, password, password_confirmation; profile afterwards | Collects first and last name at sign-up |
 | Customer name | Single `users.name` | `firstName` / `lastName` |
 | Admin roles | admin only | `AdminUser.role` is `owner` or `staff` |
