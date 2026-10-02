@@ -48,6 +48,10 @@ Boost replaces these bootstrap instructions with guidelines tailored to the appl
 
 # Project Documentation
 
+## Setup and Commands
+
+How to set up the backend and the everyday commands (install, MySQL, migrate and seed, `admin:create`, serve, tests, Pint, Scramble export) are in `docs/setup.md`. When someone asks how to start or run something, answer from it, and update it in the same change whenever a setup step or command changes.
+
 ## Backend Requirements
 
 The backend requirements are in `docs/backend-srs.md`. It overrides the PRD wherever they conflict, and its section 14 is the proposed API contract. Section 16 lists schema gaps to agree before building the affected feature, and section 17 lists where the frontend currently differs. Keep the SRS, the ER diagram, migrations, models and the API in sync.
@@ -57,7 +61,9 @@ The backend requirements are in `docs/backend-srs.md`. It overrides the PRD wher
 Code organization and design patterns are in `docs/backend-architecture.md`: thin controllers, Form Requests, policies, application services, API Resources, DTOs, and the Razorpay adapter. Read it before writing backend code. Two project rules from it:
 
 - Inject concrete classes through constructors. Do not create interfaces for services or the payment gateway, and do not bind interfaces to classes in service providers for now.
-- Customer and admin routes are separate: there are three API route files, loaded by `bootstrap/app.php` with no prefix or middleware (each file sets its own `api/v1` prefix, `api` middleware and `api.v1.` / `customer.v1.` / `admin.v1.` names in a per-version wrapper group; add a new version as another group in the same file): `routes/api.php` (shared routes with no user session: public catalog, tags, Razorpay webhook), `routes/api/customer.php` (`/auth/*` and customer routes), and admin routes (incl. `/admin/auth/*`) in `routes/api/admin.php`, each with its own `auth:sanctum` + `role:` middleware group, route-name prefix and controller namespace (section 2.1). Admins and customers sign in through separate endpoints.
+- Customer and admin routes are separate: there are three API route files, loaded by `bootstrap/app.php` with no prefix or middleware (each file sets its own `api/v1` prefix, `api` middleware and `api.v1.` / `customer.v1.` / `admin.v1.` names in a per-version wrapper group; add a new version as another group in the same file): `routes/api.php` (shared routes with no user session: public catalog, tags, Razorpay webhook), `routes/api/customer.php` (`/auth/*` and customer routes), and admin routes (incl. `/admin/auth/*`) in `routes/api/admin.php`, each with its own signed-in middleware group (`auth:api` + `scope:` + `role:` + `active`, see section 2.2), route-name prefix and controller namespace (section 2.1). Admins and customers sign in through separate endpoints.
+- Authentication is Passport personal access tokens on the `api` guard; tokens are scoped to the role (`customer` / `admin`). Spatie roles use the guard name `Role::GUARD` (`web`), pinned on `User`: never type `'web'` for roles and never pass a guard to `hasRole()` (section 2.2).
+- Follow the naming conventions in section 29 (classes, methods, variables, routes, database). In particular, name injected services after their class in camelCase (`AuthTokenService $authTokenService`), never short names like `$auth`. When a new kind of class appears, add its rule there.
 - When one operation has several real implementations chosen at runtime by a stored key (slug, type, provider), use a strategy interface plus a simple factory class whose `match` maps the key to the strategy class (section 26.9). Only once at least two approved variants exist.
 
 ## API Documentation

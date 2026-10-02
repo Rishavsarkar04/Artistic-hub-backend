@@ -37,9 +37,25 @@ return [
     |
     */
 
+    /*
+    | How long API tokens stay valid, in minutes, per role (App\Enums\Role). Passport issues every
+    | personal access token with the longest lifetime; EnsureTokenIsFresh cuts admin tokens short.
+    */
+    'token_lifetimes' => [
+        'customer' => (int) env('CUSTOMER_TOKEN_LIFETIME_MINUTES', 60 * 24 * 7),
+        'admin' => (int) env('ADMIN_TOKEN_LIFETIME_MINUTES', 60 * 24 * 2),
+    ],
+
     'guards' => [
         'web' => [
             'driver' => 'session',
+            'provider' => 'users',
+        ],
+
+        // Passport personal access tokens (Bearer) for the whole API, admins and customers alike.
+        // Scopes and Spatie roles keep the two apart; see docs/backend-architecture.md, section 2.1.
+        'api' => [
+            'driver' => 'passport',
             'provider' => 'users',
         ],
     ],

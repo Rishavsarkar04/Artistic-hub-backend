@@ -76,11 +76,9 @@ Requirements:
 - Customer signs in and then creates their profile.
 - Do not expose passwords or password hashes in responses.
 
-Schema decision:
-users.name exists, but registration collects only email/password.
-Before implementation, agree how users.name is represented until
-profile creation. Recommended: nullable until onboarding is complete,
-with the migration and ER diagram updated together.
+Schema decision (agreed 2026-10-02):
+users.name is nullable until profile creation sets it. The migration
+and ER diagram are updated.
 
 Do not invent a fake customer name from the email.
 
@@ -105,10 +103,21 @@ and a derived profile-completion indicator.
 Only active accounts can sign in.
 Blocked, suspended, or pending accounts must not gain access.
 
-Authentication mechanism: not yet chosen. The frontend currently sends
-a Bearer token in the Authorization header (Sanctum API tokens would fit).
-Agree on Sanctum token or cookie authentication before implementing
-the frontend contract.
+Authentication mechanism (decided 2026-10-02): Laravel Passport personal
+access tokens, sent as `Authorization: Bearer <token>`.
+- Sign-in returns `{ data: { token_type, access_token, expires_at, user } }`.
+- Each token is scoped to its role (`customer` or `admin`); routes check
+  both the scope and the role.
+- Lifetimes: customers 7 days, admins 2 days (configurable). No refresh
+  tokens: when a token expires, the user signs in again.
+- Sign-out revokes the current token.
+- A wrong password, unknown email and an account of the other role all get
+  the same 401 message; an inactive account with correct credentials gets
+  403. Tokens of users who are later blocked stop working (403), and tokens
+  of soft-deleted users stop working (401).
+- Registration returns the created customer (201) and no token; the
+  customer signs in next.
+See `docs/backend-architecture.md`, section 2.2.
 
 ### BE-AUTH-03: Password management
 
@@ -705,7 +714,6 @@ conflict and validation responses.
 Inspect the existing repository before changing it.
 
 Implement only confirmed scope. Resolve schema gaps explicitly:
-- Registration without users.name.
 - Unknown payment method before payment.
 - placed_at timing for pre-payment pending orders.
 - Reservation and late-payment handling.

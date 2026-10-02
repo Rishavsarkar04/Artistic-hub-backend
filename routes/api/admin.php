@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\Auth\SessionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 | Groups inside each version, in this order:
 | - Signed out, throttled: /admin/auth/login, forgot-password,
 |   reset-password. Sign-in accepts admin accounts only.
-| - Signed in (auth:sanctum + role:admin): /admin/auth/me, logout, password;
+| - Signed in (auth:api + scope:admin + role:admin + active + token.fresh): /admin/auth/me, logout, password;
 |   products, variants, variant photos, tags; read-only customers and
 |   orders; PATCH orders/{order}/tracking (no other order updates).
 |
@@ -24,5 +25,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('api/v1/admin')->middleware('api')->name('admin.v1.')->group(function () {
-    //
+    Route::prefix('auth')->name('auth.')->middleware('throttle:6,1')->group(function () {
+        Route::post('login', [SessionController::class, 'store'])->name('login');
+    });
+
+    Route::middleware(['auth:api', 'scope:admin', 'role:admin', 'active', 'token.fresh'])->group(function () {
+        Route::prefix('auth')->name('auth.')->group(function () {
+            Route::get('me', [SessionController::class, 'show'])->name('me');
+            Route::post('logout', [SessionController::class, 'destroy'])->name('logout');
+        });
+    });
 });

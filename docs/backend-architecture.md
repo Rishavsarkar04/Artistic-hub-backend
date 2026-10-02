@@ -22,18 +22,22 @@ Do not silently add database tables, columns, enum values, or features.
 
 ### 1.1 Repository state
 
-As of 2026-10-01 the backend is a fresh Laravel 13 application:
-- API routes are split into `routes/api.php`, `routes/api/customer.php`
-  and `routes/api/admin.php` (section 2.1); all three are still empty.
+As of 2026-10-02 the backend is a Laravel 13 application with:
+- API routes split into `routes/api.php`, `routes/api/customer.php`
+  and `routes/api/admin.php` (section 2.1). Built so far: customer
+  register/login/me/logout and admin login/me/logout (section 2.2).
   Do not run `php artisan install:api`: it would register `routes/api.php`
   through the `api:` option with its own prefix and overwrite the file.
-  Install Sanctum directly once the authentication mechanism is agreed
-  (backend SRS BE-AUTH-02).
-- `spatie/laravel-permission` and the Razorpay SDK are not installed.
+- Installed: `laravel/passport` (personal access tokens only),
+  `spatie/laravel-permission` (roles only) and `dedoc/scramble`.
+  Not installed: the Razorpay SDK.
+- Built: users and customer profiles (both soft-deleting together; users with `status`), roles, `customer_profiles` and
+  `customer_addresses` migrations and models; enums `UserStatus`, `Role`,
+  `Gender`, `AddressLabel`; `RoleSeeder`; `php artisan admin:create`
+  (backed by `App\Services\Accounts\AdminAccountService`).
 - The base `App\Http\Controllers\Controller` is empty, so it has no
   `authorize()` helper. Use `Gate::authorize()` in controllers.
 - Database is MySQL (`DB_CONNECTION=mysql`, database `artistic_hub`), locally and as the planned production engine.
-- Only the default users, cache and jobs migrations exist.
 
 Follow `CLAUDE.md` and the `laravel-best-practices` skill in `.claude/skills/`.
 
@@ -133,7 +137,7 @@ built. Inside each version group, in this order:
 - Customer and admin files:
 - A signed-out `auth/*` group (register only for customers; login, forgot
   and reset password), rate-limited.
-- A signed-in group with `auth:sanctum` + `role:customer` or `role:admin`.
+- A signed-in group with the middleware stack from section 2.2.
 
 When adding routes:
 - Use `[Controller::class, 'method']` actions.
@@ -153,17 +157,92 @@ Rules:
 - Admin and customer sign-in are separate controllers. Each accepts
   only its own role and returns the same invalid-credentials response
   for the other role.
-- Role middleware is Spatie's `role:` alias. It must be registered in
-  `bootstrap/app.php` when `spatie/laravel-permission` is installed, and
-  `auth:sanctum` needs Sanctum; until both are installed, requests to the
-  signed-in groups fail. Policies still check ownership and abilities
-  inside each group; the role middleware is not the only guard.
+- Middleware aliases (`role`, `scope`, `active`, `token.fresh`) are
+  registered in `bootstrap/app.php`. Policies still check ownership and
+  abilities inside each group; the role middleware is not the only guard.
 - Password-reset links point to the matching frontend (customer or admin
   reset page), for example by setting `ResetPassword::createUrlUsing()`
   based on the user's role.
 - A route that needs no user session and belongs to neither audience goes
   in `routes/api.php`. The webhook stays there: it is authenticated by
   signature only.
+
+## 2.2 Authentication (Passport personal access tokens)
+
+Decided 2026-10-02 (backend SRS BE-AUTH-02).
+
+**Tokens.** Admins and customers sign in through their own endpoints
+(`POST /auth/login`, `POST /admin/auth/login`), which return a Passport
+personal access token (a signed JWT, also stored in `oauth_access_tokens`
+so it can be revoked). The frontend sends it as `Authorization: Bearer`.
+There are no refresh tokens; when a token expires the user signs in again.
+Passport's OAuth routes (`/oauth/*`) are switched off
+(`Passport::ignoreRoutes()` in `AppServiceProvider`).
+
+**Guards.**
+- Login guard: `api` (driver `passport`, provider `users`) in
+  `config/auth.php`, used by every signed-in route as `auth:api`.
+  Admins and customers share it.
+- Default guard: `web`, unchanged.
+- Spatie role guard name: `Role::GUARD` (`web`), pinned on
+  `User::$guard_name`. It matches Laravel's default guard, so Spatie calls
+  without a guard land on it too. Role checks compare names, so roles
+  stored under `web` work for users signed in through `api`. Never pass a
+  guard to `hasRole()`, and never type `'web'` for roles: use `Role::GUARD`.
+
+**Scopes.** Each token carries one scope equal to its role name
+(`Role::scope()`): `customer` or `admin`. Scopes are registered with
+`Passport::tokensCan()` in `AppServiceProvider`.
+
+**Middleware stack for signed-in groups:**
+
+| Group | Middleware |
+|---|---|
+| Customer | `auth:api`, `scope:customer`, `role:customer`, `active`, `token.fresh` |
+| Admin | `auth:api`, `scope:admin`, `role:admin`, `active`, `token.fresh` |
+
+- `scope:` (Passport `CheckToken`) rejects a token without the scope: 403.
+- `role:` (Spatie `RoleMiddleware`) rejects a user without the role: 403.
+  Scope and role together mean a customer token never reaches admin routes
+  even if a role were assigned by mistake.
+- `active` (`EnsureUserIsActive`) rejects blocked, suspended or pending
+  users with an existing token: 403.
+- `token.fresh` (`EnsureTokenIsFresh`) rejects a token whose stored
+  `expires_at` has passed (401) and revokes it; see below.
+- Soft-deleted users are never found by the guard, so their tokens fail: 401.
+- API guests get a 401 JSON response, never a redirect
+  (`redirectGuestsTo(fn () => null)` in `bootstrap/app.php`).
+
+**Lifetimes.** Per role in `config/auth.php` `token_lifetimes` (minutes;
+`.env` `CUSTOMER_TOKEN_LIFETIME_MINUTES`, default 7 days, and
+`ADMIN_TOKEN_LIFETIME_MINUTES`, default 2 days). Passport gives every
+personal access token the same expiry (the longest lifetime, in the JWT
+`exp` and the row). At sign-in, `AuthTokenService` overwrites the row's
+`oauth_access_tokens.expires_at` with the role's real expiry and returns
+the same value as `expires_at`; `EnsureTokenIsFresh` enforces it on every
+request. The lifetime is fixed when the token is issued, so changing the
+setting later does not affect tokens already handed out.
+
+**Sign-in rules** (`App\Services\Accounts\AuthTokenService`):
+- Wrong password, unknown email and an account of the other role all throw
+  `InvalidCredentials` (401, one message), so the response never reveals
+  whether an email exists or which role it has.
+- Correct credentials on an inactive account throw `AccountNotActive` (403).
+- Sign-out revokes only the current token.
+- Registration (`CustomerRegistrationService`) creates an active customer
+  from email and password only and returns no token; the customer signs in
+  next.
+
+**Keys.** `php artisan passport:keys` writes `storage/oauth-*.key`
+(git-ignored). In production set `PASSPORT_PRIVATE_KEY` /
+`PASSPORT_PUBLIC_KEY` instead. Tokens are issued from a personal access
+client: `php artisan passport:client --personal --provider=users`.
+
+**Tests.** Use `Tests\Concerns\IssuesRealTokens` (seeds roles and creates
+the personal access client) to sign in through the real endpoints, or
+`Passport::actingAs($user, [$role->scope()])` when sign-in is not under
+test. Call `$this->app['auth']->forgetGuards()` before reusing a token in
+the same test, so the guard re-checks it.
 
 ## 3. Suggested directory structure
 
@@ -739,6 +818,11 @@ These operations need explicit orchestration and transaction boundaries.
 Observers may be used for minor local behavior only when the repository
 already follows that convention and the behavior is documented.
 
+Documented exception: `User::booted()` soft-deletes and restores the
+customer profile together with the user, so every delete path (services,
+Tinker, future code) keeps them in step. It only mirrors the soft-delete
+flag; it does no other work.
+
 ## 20. Money handling
 
 Preserve the ER diagram's decimal money columns.
@@ -1271,6 +1355,7 @@ or unnecessary sensitive payloads into jobs.
 
 ### 27.8 Additional method-design rules
 
+- Name injected classes after their type (see section 29.3).
 - Declare parameter and return types.
 - Prefer named business methods over boolean mode flags.
 - Avoid long positional parameter lists; group related fields in a DTO.
@@ -1328,8 +1413,73 @@ guide and the docs stay accurate:
 - Run `php artisan scramble:analyze` after adding endpoints to catch
   anything it could not infer.
 
-### 28.4 Still to add
+### 28.4 Authentication in the docs
 
-- Bearer-token security scheme, once the authentication mechanism is
-  agreed (backend SRS BE-AUTH-02). Public routes in `routes/api.php` and
-  the signed-out auth routes must stay marked as not requiring a token.
+Every endpoint is documented as needing a Bearer token (set in
+`AppServiceProvider::configureApiDocs()`). Mark endpoints that need none,
+such as public catalog routes and sign-in/registration, with
+`@unauthenticated` in the controller method's docblock. Document error
+responses by throwing (or declaring with `@throws`) Laravel's exception
+types or subclasses of them, e.g. `InvalidCredentials` extends
+`AuthenticationException` (401) and `AccountNotActive` extends
+`AuthorizationException` (403).
+
+## 29. Naming conventions
+
+One place for how things are named. Follow the existing examples; when a
+new kind of class appears, add its rule here.
+
+### 29.1 Classes
+
+| Kind | Folder | Pattern | Examples |
+|---|---|---|---|
+| Controller | `Http/Controllers/Api/{Customer,Admin,Catalog,Webhooks}/...` | `{Thing}Controller`, one per resource or action group | `SessionController`, `RegisterController` |
+| Form Request | `Http/Requests/{Customer,Admin}/...` (mirrors the controller folder) | `{Action}Request` | `LoginRequest`, `RegisterRequest` |
+| API Resource | `Http/Resources` | `{Model or audience}Resource`; a wrapper for another payload is `{Thing}{Payload}Resource` | `CustomerResource`, `AdminTokenResource` |
+| Middleware | `Http/Middleware` | `Ensure{Condition}` (what must be true to pass) | `EnsureUserIsActive`, `EnsureTokenIsFresh` |
+| Middleware alias | `bootstrap/app.php` | short, lowercase, dot for qualifiers | `active`, `token.fresh`, `role`, `scope` |
+| Service | `Services/{Domain}` | `{Purpose}Service`, `final class` | `CustomerRegistrationService`, `AuthTokenService` |
+| DTO | `Data` | a noun for what it holds, `final readonly class` | `IssuedToken` |
+| Enum | `Enums` | singular noun, string-backed; cases in PascalCase, values snake_case | `UserStatus::Active` = `'active'` |
+| Exception | `Exceptions/{Domain}` | the situation, no `Exception` suffix; extend the Laravel exception that gives the right status | `InvalidCredentials`, `AccountNotActive` |
+| Console command | `Console/Commands` | class in PascalCase; signature `{area}:{action}` | `CreateAdmin` / `admin:create` |
+| Model | `Models` | singular; table is the snake_case plural | `CustomerAddress` / `customer_addresses` |
+
+### 29.2 Methods
+
+- Name service methods after the business intent: `register()`,
+  `signIn()`, `signOut()`, `createAdmin()`; not `handle()`, `process()`
+  or `update()` with a mode flag (section 26.4).
+- Booleans read as questions: `isActive()`, `isAdmin()`,
+  `hasCompletedProfile()`.
+- Controller actions use Laravel's resource names: `index`, `show`,
+  `store`, `update`, `destroy`.
+
+### 29.3 Variables and parameters
+
+- Name an injected service or class after its type, in camelCase:
+  `CustomerRegistrationService $customerRegistrationService`,
+  `AuthTokenService $authTokenService`,
+  `AdminAccountService $adminAccountService`. Avoid short names like
+  `$auth`, `$registration` or `$accounts`: they read like data and can be
+  confused with helpers such as `auth()`.
+- Name models and data after what they are in this context, not their
+  class: `$customer`, `$admin` (both `User`), `$issuedToken`.
+- Use `$request` for the Form Request in controllers.
+
+### 29.4 Routes and API
+
+- Route names: `{api|customer|admin}.v1.{area}.{action}`, e.g.
+  `customer.v1.auth.login` (section 2.1).
+- URLs: lowercase, hyphenated, plural resources: `/customer/addresses`,
+  `/auth/forgot-password`.
+- JSON fields, request fields and query parameters: snake_case, matching
+  the database columns (`expires_at`, `profile_completed`).
+
+### 29.5 Database
+
+- Tables: snake_case plural (`customer_profiles`); pivot tables follow the
+  ER diagram (`product_variant_tags`).
+- Columns: snake_case; booleans start with `is_` or `has_` (`is_default`);
+  timestamps end with `_at` (`confirmed_at`).
+- Status-like columns are strings backed by an enum in `app/Enums`.

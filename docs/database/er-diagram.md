@@ -4,7 +4,11 @@ Source of truth for the Artistic Hub database schema. Migrations in `database/mi
 
 ## Notes
 
-- Roles use `spatie/laravel-permission` tables (`roles`, `model_has_roles`). The two roles are `admin` and `customer`.
+- Roles use `spatie/laravel-permission` tables (`roles`, `model_has_roles`). The two roles are `admin` and `customer` (`App\Enums\Role`), guard `web`. The package's migration also creates `permissions`, `model_has_permissions` and `role_has_permissions`; they stay empty because only roles are used.
+- Not shown: Laravel's framework tables (`password_reset_tokens`, `sessions`, `cache`, `jobs`), `users.remember_token`, and Laravel Passport's tables (`oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes`). Only `oauth_clients` (one personal access client) and `oauth_access_tokens` (sign-in tokens, linked to `users.id`) are used.
+- `users.name` is null until the customer creates their profile (registration collects only email and password; agreed 2026-10-02). Admins always have a name.
+- Status and label columns are strings backed by enums in `app/Enums`: `users.status` (`UserStatus`, default `active`), `customer_profiles.gender` (`Gender`), `customer_addresses.label` (`AddressLabel`, default `home`).
+- `users` and `customer_profiles` use soft deletes (`deleted_at`). Soft-deleting a user also soft-deletes their profile, and restoring the user restores it (`User::booted()`). A soft-deleted user is hidden from normal queries, so they cannot sign in; their email stays reserved by the unique index (it cannot be registered again); their role and addresses are kept (addresses are only reached through the profile, so they are hidden with it). Records that must keep pointing at the profile, such as orders, load it with `withTrashed()`. Only a force delete removes the rows, and that cascades to the profile and addresses. There is no user-deletion feature in the API yet.
 - `orders` and `order_items` store **snapshots** of customer, address, product, and price data from the time of the order. Never read these values back from the live product or profile tables.
 - `order_items.product_variant_id` is nullable, so order history survives when a variant is deleted.
 - `orders.tracking_number` is required before an order moves to `completed`.
@@ -23,13 +27,14 @@ erDiagram
 
     USERS {
         bigint id PK
-        string name
+        string name "nullable until profile creation"
         string email UK
-        timestamp email_verified_at
+        timestamp email_verified_at "nullable"
         string password
-        string status "active, blocked, suspended, or pending"
+        string status "active, blocked, suspended, or pending; default active"
         timestamp created_at
         timestamp updated_at
+        timestamp deleted_at "nullable; soft delete"
     }
 
     ROLES {
@@ -50,27 +55,28 @@ erDiagram
         bigint id PK
         bigint user_id FK, UK
         string phone
-        date date_of_birth
-        string gender
-        string avatar_path
-        text notes
+        date date_of_birth "nullable"
+        string gender "nullable; male, female, other"
+        string avatar_path "nullable"
+        text notes "nullable; internal only"
         timestamp created_at
         timestamp updated_at
+        timestamp deleted_at "nullable; soft delete, follows the user"
     }
 
     CUSTOMER_ADDRESSES {
         bigint id PK
         bigint customer_profile_id FK
-        string label "home, work, or other"
+        string label "home, work, or other; default home"
         string recipient_name
         string phone
         string address_line_1
-        string address_line_2
+        string address_line_2 "nullable"
         string city
         string state
         string postal_code
         string country
-        boolean is_default
+        boolean is_default "default false; one per customer"
         timestamp created_at
         timestamp updated_at
     }

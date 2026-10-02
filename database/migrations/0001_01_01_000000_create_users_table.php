@@ -13,12 +13,17 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            // Null until the customer creates their profile; registration only collects email and password.
+            $table->string('name')->nullable();
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            // App\Enums\UserStatus. Only active accounts can sign in.
+            $table->string('status', 20)->default('active')->index();
             $table->rememberToken();
             $table->timestamps();
+            // Soft-deleted users cannot sign in and keep their email reserved; their profile stays for order history.
+            $table->softDeletes();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
