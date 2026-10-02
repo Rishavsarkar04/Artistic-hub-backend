@@ -223,8 +223,12 @@ Implemented 2026-10-02:
 - A customer must create their profile before adding or listing
   addresses (409 otherwise).
 - The list returns the default first, then the newest.
-- `is_default` cannot be set when creating or updating; it changes only
-  through PATCH /customer/addresses/{id}/default.
+- `is_default: true` on create or update makes that address the default;
+  every other address of the customer stops being the default, in the
+  same locked transaction. PATCH /customer/addresses/{id}/default does the
+  same on its own. Leaving `is_default` out keeps the current default.
+  `is_default: false` for the current default returns 422 (make another
+  address the default instead), so there is always exactly one default.
 - An address id that is not the customer's own returns 404, never 403, so
   the response does not reveal that it exists.
 - label defaults to home; phone is normalized like the profile phone;

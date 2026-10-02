@@ -52,10 +52,55 @@ class AddressTest extends TestCase
             ->assertJsonPath('data.phone', '9876543210')
             ->assertJsonPath('data.label', 'work');
 
-        $this->postJson('/api/v1/customer/addresses', $this->validAddress(['label' => null, 'is_default' => true]))
+        $this->postJson('/api/v1/customer/addresses', $this->validAddress(['label' => null]))
             ->assertCreated()
             ->assertJsonPath('data.is_default', false)
             ->assertJsonPath('data.label', 'home');
+    }
+
+    public function test_a_new_address_can_be_created_as_the_default(): void
+    {
+        $old = CustomerAddress::factory()->default()->create(['customer_profile_id' => $this->profileId()]);
+
+        $this->postJson('/api/v1/customer/addresses', $this->validAddress(['is_default' => true]))
+            ->assertCreated()
+            ->assertJsonPath('data.is_default', true);
+
+        $this->assertFalse($old->fresh()->is_default);
+        $this->assertSame(1, $this->customer->customerProfile->addresses()->where('is_default', true)->count());
+    }
+
+    public function test_updating_with_is_default_true_moves_the_default(): void
+    {
+        $old = CustomerAddress::factory()->default()->create(['customer_profile_id' => $this->profileId()]);
+        $address = CustomerAddress::factory()->create(['customer_profile_id' => $this->profileId()]);
+
+        $this->putJson("/api/v1/customer/addresses/{$address->id}", $this->validAddress(['is_default' => true]))
+            ->assertOk()
+            ->assertJsonPath('data.is_default', true);
+
+        $this->assertFalse($old->fresh()->is_default);
+        $this->assertSame(1, $this->customer->customerProfile->addresses()->where('is_default', true)->count());
+    }
+
+    public function test_the_default_cannot_be_turned_off_directly(): void
+    {
+        $default = CustomerAddress::factory()->default()->create(['customer_profile_id' => $this->profileId()]);
+
+        $this->putJson("/api/v1/customer/addresses/{$default->id}", $this->validAddress(['is_default' => false]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('is_default');
+
+        $this->assertTrue($default->fresh()->is_default);
+    }
+
+    public function test_updating_without_is_default_keeps_the_flag_as_it_was(): void
+    {
+        $default = CustomerAddress::factory()->default()->create(['customer_profile_id' => $this->profileId()]);
+        $other = CustomerAddress::factory()->create(['customer_profile_id' => $this->profileId()]);
+
+        $this->putJson("/api/v1/customer/addresses/{$other->id}", $this->validAddress())->assertOk()->assertJsonPath('data.is_default', false);
+        $this->assertTrue($default->fresh()->is_default);
     }
 
     public function test_addresses_are_listed_default_first(): void
@@ -109,9 +154,9 @@ class AddressTest extends TestCase
 
     public function test_invalid_address_fields_are_rejected(): void
     {
-        $this->postJson('/api/v1/customer/addresses', ['label' => 'office', 'phone' => 'x', 'postal_code' => '56@001'])
+        $this->postJson('/api/v1/customer/addresses', ['label' => 'office', 'phone' => 'x', 'postal_code' => '56@001', 'is_default' => 'yes please'])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['label', 'recipient_name', 'phone', 'address_line_1', 'city', 'state', 'postal_code', 'country']);
+            ->assertJsonValidationErrors(['label', 'recipient_name', 'phone', 'address_line_1', 'city', 'state', 'postal_code', 'country', 'is_default']);
     }
 
     public function test_addresses_need_a_profile_first(): void

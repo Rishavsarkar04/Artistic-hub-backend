@@ -4,7 +4,11 @@ namespace App\Data;
 
 use App\Enums\AddressLabel;
 
-/** The fields a customer can set on a saved address. Ownership and the default flag are set by the service. */
+/**
+ * The fields a customer can set on a saved address. Ownership is set by the service.
+ * $isDefault: true = make this the default (others stop being default); false = keep it non-default
+ * (refused for the current default); null = leave the default as it is.
+ */
 final readonly class CustomerAddressData
 {
     public function __construct(
@@ -17,6 +21,7 @@ final readonly class CustomerAddressData
         public string $state,
         public string $postalCode,
         public string $country,
+        public ?bool $isDefault = null,
     ) {}
 
     /** @return array<string, mixed> */

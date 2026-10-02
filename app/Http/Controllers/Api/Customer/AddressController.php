@@ -38,7 +38,8 @@ class AddressController extends Controller
     /**
      * Add an address.
      *
-     * The customer's first address becomes the default automatically.
+     * The customer's first address becomes the default automatically. Send `is_default: true` to make a
+     * later one the default; the previous default then stops being the default.
      *
      * @throws ProfileRequired
      */
@@ -54,6 +55,8 @@ class AddressController extends Controller
      * Update an address.
      *
      * Only the customer's own addresses can be changed; any other id returns 404. Past orders keep their own copy.
+     * Send `is_default: true` to make it the default (the previous one stops being default). Sending
+     * `is_default: false` for the current default returns 422: make another address the default instead.
      *
      * @throws ProfileRequired
      */

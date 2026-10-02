@@ -72,7 +72,7 @@
             },
             "post": {
                 "operationId": "customer.v1.addresses.store",
-                "description": "The customer's first address becomes the default automatically.",
+                "description": "The customer's first address becomes the default automatically. Send `is_default: true` to make a\nlater one the default; the previous default then stops being the default.",
                 "summary": "Add an address",
                 "tags": [
                     "Address"
@@ -137,7 +137,7 @@
         "/customer/addresses/{address}": {
             "put": {
                 "operationId": "customer.v1.addresses.update",
-                "description": "Only the customer's own addresses can be changed; any other id returns 404. Past orders keep their own copy.",
+                "description": "Only the customer's own addresses can be changed; any other id returns 404. Past orders keep their own copy.\nSend `is_default: true` to make it the default (the previous one stops being default). Sending\n`is_default: false` for the current default returns 422: make another address the default instead.",
                 "summary": "Update an address",
                 "tags": [
                     "Address"
@@ -203,11 +203,11 @@
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -1102,6 +1102,10 @@
                     "country": {
                         "type": "string",
                         "maxLength": 100
+                    },
+                    "is_default": {
+                        "type": "boolean",
+                        "description": "true makes this the default address. Leave it out to keep the current default."
                     }
                 },
                 "required": [
@@ -1201,6 +1205,10 @@
                     "country": {
                         "type": "string",
                         "maxLength": 100
+                    },
+                    "is_default": {
+                        "type": "boolean",
+                        "description": "true makes this the default address. Leave it out to keep the current default."
                     }
                 },
                 "required": [

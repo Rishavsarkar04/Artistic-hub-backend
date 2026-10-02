@@ -17,8 +17,8 @@ class StoreAddressRequest extends FormRequest
     }
 
     /**
-     * The default flag is not set here: the first address becomes the default, and
-     * PATCH /customer/addresses/{address}/default changes it.
+     * The first address always becomes the default. Send `is_default: true` to make this address
+     * the default; every other address then stops being the default.
      *
      * @return array<string, mixed>
      */
@@ -35,6 +35,8 @@ class StoreAddressRequest extends FormRequest
             'state' => ['required', 'string', 'max:100'],
             'postal_code' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9 \-]+$/'],
             'country' => ['required', 'string', 'max:100'],
+            /** true makes this the default address. Leave it out to keep the current default. */
+            'is_default' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -50,6 +52,7 @@ class StoreAddressRequest extends FormRequest
             state: $this->validated('state'),
             postalCode: $this->validated('postal_code'),
             country: $this->validated('country'),
+            isDefault: $this->has('is_default') ? $this->boolean('is_default') : null,
         );
     }
 }
