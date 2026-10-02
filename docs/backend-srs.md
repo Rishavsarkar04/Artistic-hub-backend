@@ -153,12 +153,22 @@ customer_profiles.user_id must remain unique.
 Save the user name and profile atomically.
 Repeated submissions must not create duplicate profiles.
 
-Proposed minimum onboarding fields:
-- name: required
-- phone: required
-- date_of_birth, gender, avatar: optional
+Onboarding fields (implemented 2026-10-02):
+- name: required (stored on users.name)
+- phone: required; spaces, dashes and brackets are removed, then it must
+  be 7 to 15 digits with an optional leading +
+- date_of_birth: optional, Y-m-d, in the past
+- gender: optional; male, female or other
+- avatar: not implemented yet (needs a file-storage decision); the
+  response has avatar_url = null
 
-Confirm these field requirements before implementation.
+Behavior:
+- POST /customer/profile creates it (201); a second POST returns 409.
+- GET / PUT before the profile exists return 409 "Create your profile
+  first."
+- /auth/me and the sign-in response include the profile as `profile`
+  (null until created) next to `profile_completed`.
+- Only customers can get a profile (the service refuses any other user).
 
 Require a completed profile before checkout. Because carts belong to
 `customer_profiles`, a customer also needs a profile before items can
@@ -208,6 +218,17 @@ Default-address behavior:
 - A customer cannot make another customer's address their default.
 
 Address deletion is not required by the latest scope.
+
+Implemented 2026-10-02:
+- A customer must create their profile before adding or listing
+  addresses (409 otherwise).
+- The list returns the default first, then the newest.
+- `is_default` cannot be set when creating or updating; it changes only
+  through PATCH /customer/addresses/{id}/default.
+- An address id that is not the customer's own returns 404, never 403, so
+  the response does not reveal that it exists.
+- label defaults to home; phone is normalized like the profile phone;
+  postal_code allows letters, digits, spaces and dashes.
 
 Editing a saved address must never alter historical order snapshots.
 

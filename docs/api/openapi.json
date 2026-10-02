@@ -16,6 +16,443 @@
         }
     ],
     "paths": {
+        "/customer/addresses": {
+            "get": {
+                "operationId": "customer.v1.addresses.index",
+                "description": "The default address comes first, then the newest.",
+                "summary": "List saved addresses",
+                "tags": [
+                    "Address"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `CustomerAddressResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/CustomerAddressResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "customer.v1.addresses.store",
+                "description": "The customer's first address becomes the default automatically.",
+                "summary": "Add an address",
+                "tags": [
+                    "Address"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreAddressRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`CustomerAddressResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CustomerAddressResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/customer/addresses/{address}": {
+            "put": {
+                "operationId": "customer.v1.addresses.update",
+                "description": "Only the customer's own addresses can be changed; any other id returns 404. Past orders keep their own copy.",
+                "summary": "Update an address",
+                "tags": [
+                    "Address"
+                ],
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateAddressRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`CustomerAddressResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CustomerAddressResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/customer/addresses/{address}/default": {
+            "patch": {
+                "operationId": "customer.v1.addresses.default",
+                "description": "The previous default stops being the default. Only the customer's own addresses; any other id returns 404.",
+                "summary": "Make an address the default",
+                "tags": [
+                    "AddressDefault"
+                ],
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CustomerAddressResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CustomerAddressResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/customer/profile": {
+            "get": {
+                "operationId": "customer.v1.profile.show",
+                "summary": "The customer's profile",
+                "tags": [
+                    "Profile"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CustomerProfileResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CustomerProfileResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "customer.v1.profile.store",
+                "description": "Sets the customer's name and profile details. A customer has one profile; sending this again returns 409.",
+                "summary": "Create the profile (onboarding)",
+                "tags": [
+                    "Profile"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreProfileRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`CustomerProfileResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CustomerProfileResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "customer.v1.profile.update",
+                "summary": "Update the profile",
+                "tags": [
+                    "Profile"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateProfileRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`CustomerProfileResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CustomerProfileResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
         "/auth/register": {
             "post": {
                 "operationId": "customer.v1.auth.register",
@@ -267,6 +704,16 @@
             }
         },
         "schemas": {
+            "AddressLabel": {
+                "type": "string",
+                "description": "customer_addresses.label.\n",
+                "enum": [
+                    "home",
+                    "work",
+                    "other"
+                ],
+                "title": "AddressLabel"
+            },
             "AdminResource": {
                 "type": "object",
                 "properties": {
@@ -347,6 +794,134 @@
                 ],
                 "title": "App.Http.Requests.Admin.Auth.LoginRequest"
             },
+            "CustomerAddressResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "label": {
+                        "$ref": "#/components/schemas/AddressLabel"
+                    },
+                    "recipient_name": {
+                        "type": "string"
+                    },
+                    "phone": {
+                        "type": "string"
+                    },
+                    "address_line_1": {
+                        "type": "string"
+                    },
+                    "address_line_2": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "city": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "type": "string"
+                    },
+                    "postal_code": {
+                        "type": "string"
+                    },
+                    "country": {
+                        "type": "string"
+                    },
+                    "is_default": {
+                        "type": "boolean",
+                        "description": "Exactly one of the customer's addresses is the default."
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "label",
+                    "recipient_name",
+                    "phone",
+                    "address_line_1",
+                    "address_line_2",
+                    "city",
+                    "state",
+                    "postal_code",
+                    "country",
+                    "is_default",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "CustomerAddressResource"
+            },
+            "CustomerProfileResource": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Stored on the user account; set and changed with the profile."
+                    },
+                    "phone": {
+                        "type": "string"
+                    },
+                    "date_of_birth": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Y-m-d, or null."
+                    },
+                    "gender": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Gender"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "avatar_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Null until avatar upload exists."
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "phone",
+                    "date_of_birth",
+                    "gender",
+                    "avatar_url",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "CustomerProfileResource"
+            },
             "CustomerResource": {
                 "type": "object",
                 "properties": {
@@ -371,6 +946,17 @@
                         "type": "boolean",
                         "description": "False until the profile exists; the frontend sends the customer to onboarding."
                     },
+                    "profile": {
+                        "anyOf": [
+                            {
+                                "description": "The profile details, or null until the customer creates their profile.",
+                                "$ref": "#/components/schemas/CustomerProfileResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -385,6 +971,7 @@
                     "status",
                     "role",
                     "profile_completed",
+                    "profile",
                     "created_at"
                 ],
                 "title": "CustomerResource"
@@ -413,6 +1000,16 @@
                     "user"
                 ],
                 "title": "CustomerTokenResource"
+            },
+            "Gender": {
+                "type": "string",
+                "description": "customer_profiles.gender (optional).\n",
+                "enum": [
+                    "male",
+                    "female",
+                    "other"
+                ],
+                "title": "Gender"
             },
             "LoginRequest": {
                 "type": "object",
@@ -455,6 +1052,204 @@
                     "password_confirmation"
                 ],
                 "title": "RegisterRequest"
+            },
+            "StoreAddressRequest": {
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "anyOf": [
+                            {
+                                "description": "Defaults to home.",
+                                "$ref": "#/components/schemas/AddressLabel"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "recipient_name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "phone": {
+                        "type": "string",
+                        "pattern": "^\\+?[0-9]{7,15}$"
+                    },
+                    "address_line_1": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "address_line_2": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "city": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "state": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "postal_code": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9 \\-]+$",
+                        "maxLength": 20
+                    },
+                    "country": {
+                        "type": "string",
+                        "maxLength": 100
+                    }
+                },
+                "required": [
+                    "recipient_name",
+                    "phone",
+                    "address_line_1",
+                    "city",
+                    "state",
+                    "postal_code",
+                    "country"
+                ],
+                "title": "StoreAddressRequest"
+            },
+            "StoreProfileRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "phone": {
+                        "type": "string",
+                        "description": "Digits, optionally starting with +; spaces, dashes and brackets are removed first.",
+                        "pattern": "^\\+?[0-9]{7,15}$"
+                    },
+                    "date_of_birth": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    },
+                    "gender": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Gender"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "phone"
+                ],
+                "title": "StoreProfileRequest"
+            },
+            "UpdateAddressRequest": {
+                "type": "object",
+                "description": "Same fields and rules as creating: the whole address is sent each time.",
+                "properties": {
+                    "label": {
+                        "anyOf": [
+                            {
+                                "description": "Defaults to home.",
+                                "$ref": "#/components/schemas/AddressLabel"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "recipient_name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "phone": {
+                        "type": "string",
+                        "pattern": "^\\+?[0-9]{7,15}$"
+                    },
+                    "address_line_1": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "address_line_2": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "city": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "state": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "postal_code": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9 \\-]+$",
+                        "maxLength": 20
+                    },
+                    "country": {
+                        "type": "string",
+                        "maxLength": 100
+                    }
+                },
+                "required": [
+                    "recipient_name",
+                    "phone",
+                    "address_line_1",
+                    "city",
+                    "state",
+                    "postal_code",
+                    "country"
+                ],
+                "title": "UpdateAddressRequest"
+            },
+            "UpdateProfileRequest": {
+                "type": "object",
+                "description": "Same fields and rules as creating: the whole profile is sent each time.",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "phone": {
+                        "type": "string",
+                        "description": "Digits, optionally starting with +; spaces, dashes and brackets are removed first.",
+                        "pattern": "^\\+?[0-9]{7,15}$"
+                    },
+                    "date_of_birth": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    },
+                    "gender": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Gender"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "phone"
+                ],
+                "title": "UpdateProfileRequest"
             }
         },
         "responses": {
@@ -528,6 +1323,25 @@
             },
             "AuthenticationException": {
                 "description": "Unauthenticated",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            },
+            "ModelNotFoundException": {
+                "description": "Not found",
                 "content": {
                     "application/json": {
                         "schema": {

@@ -24,7 +24,9 @@ class CustomerResource extends JsonResource
             'status' => $this->status,
             'role' => 'customer',
             /** False until the profile exists; the frontend sends the customer to onboarding. */
-            'profile_completed' => $this->hasCompletedProfile(),
+            'profile_completed' => $this->customerProfile !== null,
+            /** The profile details, or null until the customer creates their profile. */
+            'profile' => $this->customerProfile ? new CustomerProfileResource($this->customerProfile) : null,
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

@@ -70,10 +70,15 @@ class User extends Authenticatable implements OAuthenticatable
         ];
     }
 
-    /** @return HasOne<CustomerProfile, $this> */
+    /**
+     * chaperone(): a profile created or loaded through this relation gets `user` set to this same
+     * User object, so `$profile->user` never needs another query or holds a stale copy.
+     *
+     * @return HasOne<CustomerProfile, $this>
+     */
     public function customerProfile(): HasOne
     {
-        return $this->hasOne(CustomerProfile::class);
+        return $this->hasOne(CustomerProfile::class)->chaperone();
     }
 
     public function isActive(): bool

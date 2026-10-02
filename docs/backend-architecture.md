@@ -25,7 +25,9 @@ Do not silently add database tables, columns, enum values, or features.
 As of 2026-10-02 the backend is a Laravel 13 application with:
 - API routes split into `routes/api.php`, `routes/api/customer.php`
   and `routes/api/admin.php` (section 2.1). Built so far: customer
-  register/login/me/logout and admin login/me/logout (section 2.2).
+  register/login/me/logout and admin login/me/logout (section 2.2),
+  customer profile (create/read/update) and addresses
+  (list/create/update/set default).
   Do not run `php artisan install:api`: it would register `routes/api.php`
   through the `api:` option with its own prefix and overwrite the file.
 - Installed: `laravel/passport` (personal access tokens only),
