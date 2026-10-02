@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AddressLabel;
+use App\Models\Concerns\HasPublicId;
 use Database\Factories\CustomerAddressFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,7 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CustomerAddress extends Model
 {
     /** @use HasFactory<CustomerAddressFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicId;
 
     /** @var array<string, mixed> */
     protected $attributes = [

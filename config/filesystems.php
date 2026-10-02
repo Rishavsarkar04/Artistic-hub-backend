@@ -23,6 +23,13 @@ return [
     'media_disk' => env('MEDIA_DISK', 'public'),
 
     /*
+    | Uploads that are never attached to an owner (e.g. a photo uploaded in a product form that was
+    | never saved) are deleted, with their files, after this many hours by `php artisan model:prune`
+    | (scheduled daily in routes/console.php).
+    */
+    'media_orphan_hours' => (int) env('MEDIA_ORPHAN_HOURS', 24),
+
+    /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------

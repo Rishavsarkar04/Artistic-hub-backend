@@ -49,7 +49,7 @@ final class CustomerAddressService
      * @throws ModelNotFoundException when the address is not one of this customer's
      * @throws ValidationException when asked to un-default the current default
      */
-    public function updateAddress(CustomerProfile $profile, int $addressId, CustomerAddressData $data): CustomerAddress
+    public function updateAddress(CustomerProfile $profile, string $addressId, CustomerAddressData $data): CustomerAddress
     {
         return DB::transaction(function () use ($profile, $addressId, $data) {
             $this->lockProfile($profile);
@@ -77,7 +77,7 @@ final class CustomerAddressService
      *
      * @throws ModelNotFoundException when the address is not one of this customer's
      */
-    public function setDefaultAddress(CustomerProfile $profile, int $addressId): CustomerAddress
+    public function setDefaultAddress(CustomerProfile $profile, string $addressId): CustomerAddress
     {
         return DB::transaction(function () use ($profile, $addressId) {
             $this->lockProfile($profile);
@@ -97,9 +97,10 @@ final class CustomerAddressService
         $address->save();
     }
 
-    private function findAddress(CustomerProfile $profile, int $addressId): CustomerAddress
+    /** $addressId is the client-facing public_id. */
+    private function findAddress(CustomerProfile $profile, string $addressId): CustomerAddress
     {
-        return $profile->addresses()->findOrFail($addressId);
+        return $profile->addresses()->where('public_id', $addressId)->firstOrFail();
     }
 
     private function lockProfile(CustomerProfile $profile): void

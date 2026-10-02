@@ -60,7 +60,7 @@ class AddressController extends Controller
      *
      * @throws ProfileRequired
      */
-    public function update(UpdateAddressRequest $request, int $address): CustomerAddressResource
+    public function update(UpdateAddressRequest $request, string $address): CustomerAddressResource
     {
         $profile = $this->customerProfileService->requireProfile($request->user());
 

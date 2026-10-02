@@ -55,8 +55,8 @@ Route::prefix('api/v1')->middleware('api')->name('customer.v1.')->group(function
             // No delete: address deletion is not in scope.
             Route::get('addresses', [AddressController::class, 'index'])->name('addresses.index');
             Route::post('addresses', [AddressController::class, 'store'])->name('addresses.store');
-            Route::put('addresses/{address}', [AddressController::class, 'update'])->whereNumber('address')->name('addresses.update');
-            Route::patch('addresses/{address}/default', [AddressDefaultController::class, 'update'])->whereNumber('address')->name('addresses.default');
+            Route::put('addresses/{address}', [AddressController::class, 'update'])->whereUlid('address')->name('addresses.update');
+            Route::patch('addresses/{address}/default', [AddressDefaultController::class, 'update'])->whereUlid('address')->name('addresses.default');
         });
     });
 });

@@ -20,7 +20,7 @@ class AddressDefaultController extends Controller
      */
     public function update(
         Request $request,
-        int $address,
+        string $address,
         CustomerProfileService $customerProfileService,
         CustomerAddressService $customerAddressService,
     ): CustomerAddressResource {

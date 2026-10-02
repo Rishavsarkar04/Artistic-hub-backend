@@ -2,17 +2,20 @@
 
 namespace Tests\Feature\Customer;
 
+use App\Enums\MediaCollection;
 use App\Enums\Role;
+use App\Models\Media;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Passport\Passport;
+use Tests\Concerns\MakesRealUploads;
 use Tests\TestCase;
 
 class AvatarTest extends TestCase
 {
-    use RefreshDatabase;
+    use MakesRealUploads, RefreshDatabase;
 
     private User $customer;
 
@@ -28,7 +31,7 @@ class AvatarTest extends TestCase
 
     private function avatarPath(): ?string
     {
-        return $this->customer->customerProfile->fresh()->avatar_path;
+        return $this->customer->customerProfile->avatar()->first()?->path;
     }
 
     public function test_uploading_stores_the_file_under_a_random_name(): void
@@ -98,37 +101,22 @@ class AvatarTest extends TestCase
         $this->assertStringEndsWith('.png', $this->avatarPath());
     }
 
-    /** A file on disk wrapped like a browser upload; its type is detected from the content. */
-    private function realUpload(string $clientName, string $bytes): UploadedFile
+    public function test_the_avatar_is_a_media_row_attached_to_the_profile(): void
     {
-        $path = tempnam(sys_get_temp_dir(), 'upload');
-        file_put_contents($path, $bytes);
-        $this->beforeApplicationDestroyed(fn () => @unlink($path));
+        $this->post('/api/v1/customer/profile/avatar', ['avatar' => UploadedFile::fake()->image('a.jpg')], ['Accept' => 'application/json'])->assertOk();
 
-        return new UploadedFile($path, $clientName, null, null, true);
+        $media = Media::sole();
+        $this->assertSame(MediaCollection::Avatar, $media->collection);
+        $this->assertTrue($media->mediable->is($this->customer->customerProfile));
+        $this->assertSame($this->customer->id, $media->uploaded_by);
     }
 
-    private function pngBytes(int $width, int $height): string
+    public function test_replacing_the_avatar_leaves_one_media_row(): void
     {
-        ob_start();
-        imagepng(imagecreatetruecolor($width, $height));
+        $this->post('/api/v1/customer/profile/avatar', ['avatar' => UploadedFile::fake()->image('a.jpg')], ['Accept' => 'application/json']);
+        $this->post('/api/v1/customer/profile/avatar', ['avatar' => UploadedFile::fake()->image('b.jpg')], ['Accept' => 'application/json']);
 
-        return ob_get_clean();
-    }
-
-    private function gifBytes(): string
-    {
-        ob_start();
-        imagegif(imagecreatetruecolor(10, 10));
-
-        return ob_get_clean();
-    }
-
-    public function test_the_avatar_path_cannot_be_set_through_the_profile_update(): void
-    {
-        $this->putJson('/api/v1/customer/profile', [
-            'name' => 'Ravi', 'phone' => '9876543210', 'avatar_path' => 'avatars/someone-else.jpg',
-        ])->assertOk()->assertJsonPath('data.avatar_url', null);
+        $this->assertDatabaseCount('media', 1);
     }
 
     public function test_an_avatar_needs_a_profile_first(): void

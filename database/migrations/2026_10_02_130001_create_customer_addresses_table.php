@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('customer_addresses', function (Blueprint $table) {
             $table->id();
+            $table->ulid('public_id')->unique();
             $table->foreignId('customer_profile_id')->constrained()->cascadeOnDelete();
             // App\Enums\AddressLabel.
             $table->string('label', 20)->default('home');

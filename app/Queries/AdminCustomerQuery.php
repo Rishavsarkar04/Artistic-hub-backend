@@ -31,7 +31,7 @@ final class AdminCustomerQuery
             CustomerSort::Name => $query->orderByRaw('name is null')->orderBy('name')->orderBy('id'),
         };
 
-        return $query->paginate($filters->perPage)->withQueryString();
+        return $query->paginate($filters->perPage);
     }
 
     /** @return Builder<User> */

@@ -13,6 +13,8 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            // Client-facing id (ULID); the auto-increment id never leaves the backend.
+            $table->ulid('public_id')->unique();
             // Null until the customer creates their profile; registration only collects email and password.
             $table->string('name')->nullable();
             $table->string('email')->unique();

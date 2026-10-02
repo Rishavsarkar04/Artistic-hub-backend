@@ -148,7 +148,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -226,7 +226,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -519,6 +519,553 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/admin/products": {
+            "get": {
+                "operationId": "admin.v1.products.index",
+                "description": "Every product with its variants, photos and tags, paginated. Also returns `filters` (as applied)\nand `filter_options`.",
+                "summary": "List products",
+                "tags": [
+                    "Product"
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Searches product name and slug, and variant name and SKU.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 100
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Leave out for all products.",
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "$ref": "#/components/schemas/ProductStatusFilter"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "newest (default), name, price_low (lowest price first), price_high (highest first), stock_low (lowest total stock first).\n| |\n|---|\n| `newest` <br/>  |\n| `name` <br/>  |\n| `price_low` <br/> By the product's lowest variant selling price. |\n| `price_high` <br/> By the product's highest variant selling price. |\n| `stock_low` <br/> By the total stock of all its variants, lowest first. |",
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "$ref": "#/components/schemas/ProductSort"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Defaults to 20.",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated set of `AdminProductResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/AdminProductResource"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "variants"
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "properties": {
+                                                "first": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "prev": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "next": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "first",
+                                                "last",
+                                                "prev",
+                                                "next"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "from",
+                                                "last_page",
+                                                "links",
+                                                "path",
+                                                "per_page",
+                                                "to",
+                                                "total"
+                                            ]
+                                        },
+                                        "filters": {
+                                            "type": "object",
+                                            "properties": {
+                                                "search": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "sort": {
+                                                    "type": "string"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "search",
+                                                "status",
+                                                "sort",
+                                                "per_page"
+                                            ]
+                                        },
+                                        "filter_options": {
+                                            "type": "object",
+                                            "properties": {
+                                                "status": {
+                                                    "type": "array",
+                                                    "items": {}
+                                                },
+                                                "sort": {
+                                                    "type": "array",
+                                                    "items": {}
+                                                }
+                                            },
+                                            "required": [
+                                                "status",
+                                                "sort"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "links",
+                                        "meta",
+                                        "filters",
+                                        "filter_options"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "admin.v1.products.store",
+                "description": "Upload photos first with POST /admin/uploads/variant-photos and send the returned ids as variants.*.photo_ids.",
+                "summary": "Create a product with its variants",
+                "tags": [
+                    "Product"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveProductRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`AdminProductResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/AdminProductResource"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "variants"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/products/{product}": {
+            "get": {
+                "operationId": "admin.v1.products.show",
+                "summary": "View a product with its variants, photos and tags",
+                "tags": [
+                    "Product"
+                ],
+                "parameters": [
+                    {
+                        "name": "product",
+                        "in": "path",
+                        "required": true,
+                        "description": "The product public id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`AdminProductResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/AdminProductResource"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "variants"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "admin.v1.products.update",
+                "description": "Send the whole product: variants with a `public_id` are updated, without one are created, and variants not\nsent are deleted. Turning the product off turns every variant off. Photos not sent are deleted with their files.",
+                "summary": "Save a product with all its variants",
+                "tags": [
+                    "Product"
+                ],
+                "parameters": [
+                    {
+                        "name": "product",
+                        "in": "path",
+                        "required": true,
+                        "description": "The product public id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveProductRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`AdminProductResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/AdminProductResource"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "variants"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "admin.v1.products.destroy",
+                "description": "Deletes its variants, photos (and their files) and tag links. Past orders keep their own copy.",
+                "summary": "Delete a product",
+                "tags": [
+                    "Product"
+                ],
+                "parameters": [
+                    {
+                        "name": "product",
+                        "in": "path",
+                        "required": true,
+                        "description": "The product public id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/products/{product}/variants/{variant}": {
+            "delete": {
+                "operationId": "admin.v1.products.variants.destroy",
+                "description": "Removes it right away (outside the product form), with its photos and tag links. A product must keep at\nleast one variant (409). An id that is not this product's variant returns 404.",
+                "summary": "Delete one variant",
+                "tags": [
+                    "ProductVariant"
+                ],
+                "parameters": [
+                    {
+                        "name": "product",
+                        "in": "path",
+                        "required": true,
+                        "description": "The product public id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "variant",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -1054,6 +1601,252 @@
                     }
                 }
             }
+        },
+        "/admin/tags": {
+            "get": {
+                "operationId": "admin.v1.tags.index",
+                "summary": "List all tags, by name",
+                "tags": [
+                    "Tag"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `TagResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/TagResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "admin.v1.tags.store",
+                "summary": "Create a tag. A name already used (ignoring case) returns 422",
+                "tags": [
+                    "Tag"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveTagRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`TagResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/TagResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/tags/{tag}": {
+            "put": {
+                "operationId": "admin.v1.tags.update",
+                "summary": "Rename a tag (everywhere it is used)",
+                "tags": [
+                    "Tag"
+                ],
+                "parameters": [
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "required": true,
+                        "description": "The tag public id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveTagRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`TagResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/TagResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "admin.v1.tags.destroy",
+                "summary": "Delete a tag. It is removed from every variant; the variants stay",
+                "tags": [
+                    "Tag"
+                ],
+                "parameters": [
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "required": true,
+                        "description": "The tag public id",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/admin/uploads/variant-photos": {
+            "post": {
+                "operationId": "admin.v1.uploads.variant-photos.store",
+                "description": "multipart/form-data with `photos[]`: 1 to 8 files. Stores each one, not yet attached to any variant, and\nreturns them in the order sent, each with its media `id` (send the ids in the product save under\nvariants.*.photo_ids) and `url` (for the preview). If any file is invalid, none is stored (422 names the\nfile, e.g. photos.2). Photos never attached to a variant are deleted automatically after 24 hours.",
+                "summary": "Upload variant photos",
+                "tags": [
+                    "VariantPhoto"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UploadVariantPhotosRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Array of `MediaResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/MediaResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/admin/uploads/variant-photos/{media}": {
+            "delete": {
+                "operationId": "admin.v1.uploads.variant-photos.destroy",
+                "description": "Deletes the photo and its file right away: one on a saved variant (its other photos keep their order), or\none uploaded and removed from the form before saving. Any admin can delete any variant photo; an id that is\nnot a variant photo returns 404.",
+                "summary": "Delete a variant photo",
+                "tags": [
+                    "VariantPhoto"
+                ],
+                "parameters": [
+                    {
+                        "name": "media",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -1078,7 +1871,11 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                    },
+                    "public_id": {
+                        "type": "string"
                     },
                     "name": {
                         "type": "string",
@@ -1110,6 +1907,7 @@
                 },
                 "required": [
                     "id",
+                    "public_id",
                     "name",
                     "email",
                     "status",
@@ -1120,11 +1918,146 @@
                 ],
                 "title": "AdminCustomerResource"
             },
+            "AdminProductResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                    },
+                    "public_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "is_active": {
+                        "type": "string"
+                    },
+                    "variants": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminProductVariantResource"
+                        }
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "public_id",
+                    "name",
+                    "slug",
+                    "description",
+                    "is_active",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "AdminProductResource"
+            },
+            "AdminProductVariantResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                    },
+                    "public_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "sku": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "original_price": {
+                        "type": "string",
+                        "description": "Rupees as a string, e.g. \"999.00\"."
+                    },
+                    "selling_price": {
+                        "type": "string",
+                        "description": "Rupees as a string; never more than original_price."
+                    },
+                    "stock": {
+                        "type": "string"
+                    },
+                    "is_active": {
+                        "type": "string"
+                    },
+                    "photos": {
+                        "type": "array",
+                        "description": "In display order; the first is the cover. Send their public_ids back as photo_ids to keep them.",
+                        "items": {
+                            "$ref": "#/components/schemas/MediaResource"
+                        }
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TagResource"
+                        }
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "public_id",
+                    "name",
+                    "sku",
+                    "slug",
+                    "description",
+                    "original_price",
+                    "selling_price",
+                    "stock",
+                    "is_active",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "AdminProductVariantResource"
+            },
             "AdminResource": {
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                    },
+                    "public_id": {
+                        "type": "string"
                     },
                     "name": {
                         "type": "string"
@@ -1148,6 +2081,7 @@
                 },
                 "required": [
                     "id",
+                    "public_id",
                     "name",
                     "email",
                     "status",
@@ -1204,7 +2138,11 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                    },
+                    "public_id": {
+                        "type": "string"
                     },
                     "label": {
                         "$ref": "#/components/schemas/AddressLabel"
@@ -1255,6 +2193,7 @@
                 },
                 "required": [
                     "id",
+                    "public_id",
                     "label",
                     "recipient_name",
                     "phone",
@@ -1298,10 +2237,7 @@
                         ]
                     },
                     "avatar_url": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "description": "Public URL of the avatar, or null if none."
                     },
                     "created_at": {
@@ -1332,7 +2268,11 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                    },
+                    "public_id": {
+                        "type": "string"
                     },
                     "name": {
                         "type": "string",
@@ -1372,6 +2312,7 @@
                 },
                 "required": [
                     "id",
+                    "public_id",
                     "name",
                     "email",
                     "status",
@@ -1446,6 +2387,62 @@
                 ],
                 "title": "LoginRequest"
             },
+            "MediaResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                    },
+                    "public_id": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "mime_type": {
+                        "type": "string"
+                    },
+                    "size": {
+                        "type": "string",
+                        "description": "Bytes."
+                    },
+                    "sort_order": {
+                        "type": "string",
+                        "description": "Position among its owner's media; 0 is the cover."
+                    }
+                },
+                "required": [
+                    "id",
+                    "public_id",
+                    "url",
+                    "mime_type",
+                    "size",
+                    "sort_order"
+                ],
+                "title": "MediaResource"
+            },
+            "ProductSort": {
+                "type": "string",
+                "description": "Sort orders for the admin product list.\n| |\n|---|\n| `newest` <br/>  |\n| `name` <br/>  |\n| `price_low` <br/> By the product's lowest variant selling price. |\n| `price_high` <br/> By the product's highest variant selling price. |\n| `stock_low` <br/> By the total stock of all its variants, lowest first. |",
+                "enum": [
+                    "newest",
+                    "name",
+                    "price_low",
+                    "price_high",
+                    "stock_low"
+                ],
+                "title": "ProductSort"
+            },
+            "ProductStatusFilter": {
+                "type": "string",
+                "description": "The admin product list's status filter, over products.is_active.\n",
+                "enum": [
+                    "active",
+                    "inactive"
+                ],
+                "title": "ProductStatusFilter"
+            },
             "RegisterRequest": {
                 "type": "object",
                 "properties": {
@@ -1468,6 +2465,132 @@
                     "password_confirmation"
                 ],
                 "title": "RegisterRequest"
+            },
+            "SaveProductRequest": {
+                "type": "object",
+                "description": "The whole product, sent on every save (create and update): product fields plus every variant it\nshould have. Variants with a `public_id` are updated, without one are created, and variants not sent are\ndeleted. Photos are media ids returned by POST /admin/uploads/variant-photos, in display order.\nEvery id here is a client-facing public id (ULID); toData() turns them into internal ids.",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Unique across products, ignoring case.",
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 5000
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "description": "Turning the product off turns every variant off."
+                    },
+                    "variants": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "public_id": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "The variant's public_id; leave out for a new variant."
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "description": "Unique within this product, ignoring case (other products may use the same name).",
+                                    "maxLength": 255
+                                },
+                                "sku": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]+$",
+                                    "maxLength": 64
+                                },
+                                "description": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "Falls back to the product description when null.",
+                                    "maxLength": 5000
+                                },
+                                "original_price": {
+                                    "type": "string",
+                                    "description": "Rupees, up to 2 decimals, e.g. \"999.00\".",
+                                    "pattern": "^\\d{1,8}(\\.\\d{1,2})?$"
+                                },
+                                "selling_price": {
+                                    "type": "string",
+                                    "description": "Rupees, up to 2 decimals; must not be more than original_price.",
+                                    "pattern": "^\\d{1,8}(\\.\\d{1,2})?$"
+                                },
+                                "stock": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000000
+                                },
+                                "is_active": {
+                                    "type": "boolean"
+                                },
+                                "tag_ids": {
+                                    "type": [
+                                        "array",
+                                        "null"
+                                    ],
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "uniqueItems": true
+                                },
+                                "photo_ids": {
+                                    "type": [
+                                        "array",
+                                        "null"
+                                    ],
+                                    "description": "Up to 8 media ids per variant (from POST /admin/uploads/variant-photos), in display order; the first is the cover.",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "maxItems": 8,
+                                    "uniqueItems": true
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "sku",
+                                "original_price",
+                                "selling_price",
+                                "stock",
+                                "is_active"
+                            ]
+                        },
+                        "minItems": 1,
+                        "maxItems": 50,
+                        "uniqueItems": true
+                    }
+                },
+                "required": [
+                    "name",
+                    "is_active",
+                    "variants"
+                ],
+                "title": "SaveProductRequest"
+            },
+            "SaveTagRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Unique; the slug is generated from it.",
+                        "maxLength": 100
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "title": "SaveTagRequest"
             },
             "StoreAddressRequest": {
                 "type": "object",
@@ -1570,6 +2693,31 @@
                     "phone"
                 ],
                 "title": "StoreProfileRequest"
+            },
+            "TagResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                    },
+                    "public_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "public_id",
+                    "name",
+                    "slug"
+                ],
+                "title": "TagResource"
             },
             "UpdateAddressRequest": {
                 "type": "object",
@@ -1689,6 +2837,26 @@
                     "phone"
                 ],
                 "title": "UpdateProfileRequest"
+            },
+            "UploadVariantPhotosRequest": {
+                "type": "object",
+                "properties": {
+                    "photos": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "binary",
+                            "contentMediaType": "application/octet-stream",
+                            "description": "Maximum file size: 5120 kilobytes."
+                        },
+                        "minItems": 1,
+                        "maxItems": 8
+                    }
+                },
+                "required": [
+                    "photos"
+                ],
+                "title": "UploadVariantPhotosRequest"
             }
         },
         "responses": {

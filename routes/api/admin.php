@@ -2,6 +2,10 @@
 
 use App\Http\Controllers\Api\Admin\Auth\SessionController;
 use App\Http\Controllers\Api\Admin\CustomerController;
+use App\Http\Controllers\Api\Admin\ProductController;
+use App\Http\Controllers\Api\Admin\ProductVariantController;
+use App\Http\Controllers\Api\Admin\TagController;
+use App\Http\Controllers\Api\Admin\VariantPhotoController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -38,5 +42,15 @@ Route::prefix('api/v1/admin')->middleware('api')->name('admin.v1.')->group(funct
 
         // Read-only: no customer-management mutations are in scope.
         Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
+
+        // Catalog. A product is saved whole, with its variants, tags and photo ids (one Save in the form).
+        Route::apiResource('products', ProductController::class)->whereUlid('product');
+
+        Route::delete('products/{product}/variants/{variant}', [ProductVariantController::class, 'destroy'])
+            ->whereUlid(['product', 'variant'])->name('products.variants.destroy');
+        Route::post('uploads/variant-photos', [VariantPhotoController::class, 'store'])->name('uploads.variant-photos.store');
+        Route::delete('uploads/variant-photos/{media}', [VariantPhotoController::class, 'destroy'])
+            ->whereUlid('media')->name('uploads.variant-photos.destroy');
+        Route::apiResource('tags', TagController::class)->except('show')->whereUlid('tag');
     });
 });

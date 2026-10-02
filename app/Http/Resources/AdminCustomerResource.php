@@ -19,7 +19,9 @@ class AdminCustomerResource extends JsonResource
         $profile = $this->customerProfile;
 
         return [
+            /** Internal database id: shown for reference only; URLs and requests take public_id. */
             'id' => $this->id,
+            'public_id' => $this->public_id,
             /** Null until the customer creates their profile. */
             'name' => $this->name,
             'email' => $this->email,

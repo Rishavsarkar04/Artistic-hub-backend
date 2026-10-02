@@ -27,8 +27,14 @@ As of 2026-10-02 the backend is a Laravel 13 application with:
   and `routes/api/admin.php` (section 2.1). Built so far: customer
   register/login/me/logout and admin login/me/logout (section 2.2),
   customer profile (create/read/update, avatar upload/remove) and addresses
-  (list/create/update/set default), and the admin customer list
-  (`AdminCustomerQuery`).
+  (list/create/update/set default), the admin customer list
+  (`AdminCustomerQuery`), and the admin catalog: products saved whole with
+  variants, tags and photos (`ProductService` owns the save and its
+  transaction, `ProductVariantService` the variants, `VariantPhotoService`
+  attaches photo media; `AdminProductQuery` the list), tags
+  (`TagService`), the shared `media` table (`MediaService`, upload then
+  attach, daily pruning of unattached uploads), and client-facing ULID ids
+  on every exposed model (`HasPublicId`).
   Do not run `php artisan install:api`: it would register `routes/api.php`
   through the `api:` option with its own prefix and overwrite the file.
 - Installed: `laravel/passport` (personal access tokens only),
@@ -856,23 +862,52 @@ API, validated, then written to storage); files are **publicly readable by
 URL**; the disk is `config('filesystems.media_disk')` (`MEDIA_DISK`):
 `public` locally, `s3` in production.
 
+- Every uploaded file is a row in the polymorphic `media` table
+  (`App\Models\Media`), decided 2026-10-03. `collection`
+  (`App\Enums\MediaCollection`: `variant_photo`, `avatar`) says what it is
+  for and sets its folder (`variant-photos/`, `avatars/`); `mediable`
+  (morph) is the owner; `disk`, `path`, `mime_type`, `size`,
+  `uploaded_by`, `sort_order`.
+- **Upload, then attach.** `MediaService::upload($file, $collection,
+  $uploader)` stores the file and creates an **unattached** row. The
+  owner's service attaches it when the owner is saved (`VariantPhotoService`
+  for variant photos via `photo_ids`; `CustomerProfileService` attaches an
+  avatar right away). Owners expose `morphMany`/`morphOne` relations filtered
+  by collection (`ProductVariant::photos()`, `CustomerProfile::avatar()`).
+- **Orphans are pruned.** `Media` uses `Prunable`: rows still unattached
+  after `config('filesystems.media_orphan_hours')` (24) are deleted with
+  their files by `php artisan model:prune`, scheduled daily in
+  `routes/console.php`. Production must run the scheduler (cron), see
+  `docs/setup.md`.
+- **Owner deleted → media detached.** A morph relation has no database
+  foreign key, so services do what `nullOnDelete` would: before deleting
+  variants (product delete, variant delete, variants left out of a save)
+  they call `VariantPhotoService::detachPhotosOf($variantIds)`, which sets
+  `mediable_type` / `mediable_id` to null. The daily prune then deletes
+  those rows and their files.
+- **Media removed on purpose → deleted now.** Photos dropped from
+  `photo_ids`, the photo delete endpoint and avatar replace/remove delete
+  right away: many as part of a bigger change with
+  `MediaService::deleteRows($media)` inside the transaction and
+  `deleteFiles($media)` after it commits (a rollback never loses a file);
+  a single item on its own with `MediaService::delete($media)`.
 - `App\Services\Media\MediaStorageService` is the only class that touches
-  the media disk: `store($file, $directory)` (random ULID name plus the
+  the disk: `store($file, MediaCollection)` (random ULID name plus the
   extension of the real content, never the client's file name),
-  `url($path)`, `delete($path)` (reports failures, never throws).
-- Store only the path in the database (`avatar_path`, later photo
-  `path`); build URLs with `MediaStorageService::url()` in resources.
-- Folders are the cases of `App\Enums\MediaDirectory` (`avatars`,
-  `products`); `store()` only accepts that enum, never a string. The S3
-  bucket policy makes exactly these folders readable (no per-object ACLs),
-  so a new folder means a new enum case and a policy update together.
-- Replace a file in this order: store the new file, save the database
-  row (delete the new file if that fails), then delete the old file.
+  `url($path, $disk)`, `exists()`, `delete()` (reports failures, never
+  throws). Rows record their `disk`, so files keep resolving if
+  `MEDIA_DISK` changes later. Resources build URLs with `Media::url()`.
+- The S3 bucket policy makes exactly the collection folders readable (no
+  per-object ACLs); a new collection means a new enum case and a policy
+  update together.
+- Accept media by **id** (validated with `Rule::exists('media', 'id')` and
+  the collection), never by path.
 - File uploads use POST with multipart/form-data (PHP does not parse
   multipart bodies on PUT/PATCH).
-- Tests set `filesystems.media_disk` to a fake disk (`Storage::fake`).
-- A force-deleted user's avatar file is not removed (no user-deletion
-  feature yet).
+- Tests set `filesystems.media_disk` to a fake disk (`Storage::fake`) and
+  upload real files (`Tests\Concerns\MakesRealUploads`).
+- A force-deleted user's avatar row and file are not removed (no
+  user-deletion feature yet).
 
 Use Laravel Storage for variant images and avatars.
 
@@ -1471,7 +1506,8 @@ new kind of class appears, add its rule here.
 | Exception | `Exceptions/{Domain}` | the situation, no `Exception` suffix; extend the Laravel exception that gives the right status | `InvalidCredentials`, `AccountNotActive` |
 | Query object | `Queries` | `{Audience}{Thing}Query`, `final class`, read-only (section 26.7) | `AdminCustomerQuery` |
 | List filters | `Data` | `{Thing}ListFilters`, `final readonly class`, built by the list Form Request's `toFilters()` | `CustomerListFilters` |
-| Media folders | `Enums` | `MediaDirectory` cases, one per folder on the media disk | `MediaDirectory::Avatars` |
+| Support helper | `Support` | a noun, `final class` with static methods, no state | `Money` (exact decimal compare/normalize with bcmath) |
+| Media collections | `Enums` | `MediaCollection` cases, one per kind of upload; `directory()` gives its folder | `MediaCollection::VariantPhoto` |
 | Sort options | `Enums` | `{Thing}Sort`, cases are the allowed `sort` values | `CustomerSort` |
 | Console command | `Console/Commands` | class in PascalCase; signature `{area}:{action}` | `CreateAdmin` / `admin:create` |
 | Model | `Models` | singular; table is the snake_case plural | `CustomerAddress` / `customer_addresses` |
@@ -1496,9 +1532,45 @@ new kind of class appears, add its rule here.
   confused with helpers such as `auth()`.
 - Name models and data after what they are in this context, not their
   class: `$customer`, `$admin` (both `User`), `$issuedToken`.
+- No single-letter variable names anywhere (app code and tests): not in
+  loops, closures, arrow functions or catch blocks. Use what the value is:
+
+  | Instead of | Write |
+  |---|---|
+  | `foreach ($items as $i => …)` | `$index` (or what it counts: `$order`, `$position`) |
+  | `fn ($q) => $q->where(…)` | `$query`; in a nested closure name the part: `$where`, `$variantQuery`, `$otherProducts` |
+  | `fn ($v) => $v->id`, `array $v` | `$variant`, `$variantData` |
+  | `for ($n = 2; …)` | `$suffix`, `$number`, `$counter` |
+  | `compare($a, $b)` | `$amount`, `$other` |
+  | `catch (Throwable $e)` | `$exception` |
+
+  When an inner closure would reuse an outer variable's name (e.g. an
+  outer `$query`), give the inner one its own name rather than shadowing it.
 - Use `$request` for the Form Request in controllers.
 
 ### 29.4 Routes and API
+
+- **Public ids for lookups** (decided 2026-10-03). Every model whose id
+  reaches the API uses `App\Models\Concerns\HasPublicId` and has a
+  `public_id` ULID column (`$table->ulid('public_id')->unique()`).
+  Resources return both `'id' => $this->id` (the internal id, shown for
+  reference only; it reveals record counts and order) and
+  `'public_id' => $this->public_id`. Only `public_id` is ever accepted:
+  request fields that refer to an existing record use
+  the same name (e.g. `variants.*.public_id`), while lists of references
+  keep `*_ids` names with public ids as values (`tag_ids`, `photo_ids`).
+  URLs use it (route model
+  binding resolves `public_id`; constrain routes with `->whereUlid()`);
+  requests accept public ids (`'ulid'` +
+  `Rule::exists('table', 'public_id')`) and translate them to internal ids
+  before calling services (see `SaveProductRequest::toData()`). Services
+  keep working with internal ids, and lookups from a URL use
+  `where('public_id', …)` inside the owner's scope.
+
+- List endpoints paginate with `->paginate($perPage)` and **without**
+  `->withQueryString()`: the `links` URLs carry only `?page=N`. Clients
+  build page URLs from `meta` (`current_page`, `last_page`) plus their own
+  filters (echoed back in `filters`).
 
 - Route names: `{api|customer|admin}.v1.{area}.{action}`, e.g.
   `customer.v1.auth.login` (section 2.1).

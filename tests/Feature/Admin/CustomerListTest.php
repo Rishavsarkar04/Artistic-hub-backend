@@ -32,10 +32,10 @@ class CustomerListTest extends TestCase
         $this->getJson('/api/v1/admin/customers')
             ->assertOk()
             ->assertJsonCount(2, 'data')
-            ->assertJsonPath('data.0.id', $new->id)
+            ->assertJsonPath('data.0.public_id', $new->public_id)
             ->assertJsonPath('data.0.profile_completed', false)
             ->assertJsonPath('data.0.status', 'active')
-            ->assertJsonPath('data.1.id', $old->id)
+            ->assertJsonPath('data.1.public_id', $old->public_id)
             ->assertJsonPath('data.1.profile_completed', true)
             ->assertJsonPath('meta.total', 2)
             ->assertJsonPath('meta.per_page', 20);
@@ -60,9 +60,9 @@ class CustomerListTest extends TestCase
         $byPhone->customerProfile->update(['phone' => '9000011111']);
         User::factory()->customerWithProfile()->create(['name' => 'Someone Else', 'email' => 'x@y.z']);
 
-        $this->getJson('/api/v1/admin/customers?search=ravi')->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $byName->id);
-        $this->getJson('/api/v1/admin/customers?search=meera@')->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $byEmail->id);
-        $this->getJson('/api/v1/admin/customers?search=00011')->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $byPhone->id);
+        $this->getJson('/api/v1/admin/customers?search=ravi')->assertJsonCount(1, 'data')->assertJsonPath('data.0.public_id', $byName->public_id);
+        $this->getJson('/api/v1/admin/customers?search=meera@')->assertJsonCount(1, 'data')->assertJsonPath('data.0.public_id', $byEmail->public_id);
+        $this->getJson('/api/v1/admin/customers?search=00011')->assertJsonCount(1, 'data')->assertJsonPath('data.0.public_id', $byPhone->public_id);
         $this->getJson('/api/v1/admin/customers?search=%25')->assertJsonCount(0, 'data');
     }
 
@@ -80,7 +80,7 @@ class CustomerListTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('meta.current_page', 2)
             ->assertJsonPath('meta.total', 3)
-            ->assertJsonPath('data.0.id', $noName->id);
+            ->assertJsonPath('data.0.public_id', $noName->public_id);
     }
 
     public function test_the_response_echoes_the_applied_filters_and_their_options(): void

@@ -26,7 +26,7 @@ This section maps the PRD onto the actual project. Where it records a decision, 
 - **Customer data:** `users` holds login and account `status`; `customer_profiles` holds phone, date of birth, gender, avatar and notes; `customer_addresses` holds labelled addresses (home, work, other) with one default.
 - **Catalog:** products have one or more variants; variants are the sellable unit with unique `sku` and `slug`, `original_price` and selling price, `stock`, optional description (falls back to the product's) and `is_active`. Photos and tags belong to variants.
 - **Stock and discounts are in scope:** each variant tracks `stock`, and a lower selling price shows the original struck through. Stock reservation during payment is still undecided (see conflicts).
-- **Variant photos:** ordered by `sort_order`; the lowest is the cover. There is no separate primary-image flag.
+- **Variant photos and avatars:** one polymorphic `media` table (decided 2026-10-03): upload first, attach when the variant or profile is saved; uploads never attached are deleted after 24 hours. Photos are ordered by `sort_order`; the lowest is the cover (no primary-image flag). No alt text column.
 - **Tags:** `tags` (unique `name` and `slug`) linked through `product_variant_tags`. Admins add, rename and delete tags from the product form ("Add or edit tags" dialog), not a separate screen. Renames and deletes apply at once to every product.
 - **Currency and money:** INR. Money columns stay `decimal` and the API returns them as strings (SRS); Razorpay subunits are used only at the provider boundary. The admin frontend's integer paise must be converted.
 - **Registration and profile (SRS):** sign-up takes only email and password; the customer creates a profile (name, phone, …) after signing in, and needs it before checkout.
@@ -43,7 +43,6 @@ This section maps the PRD onto the actual project. Where it records a decision, 
 | Topic | PRD says | ER diagram / code says | Decision needed |
 |---|---|---|---|
 | Selling price name | "selling price" | ER `selling_price`; admin frontend `effective_price` | Choose one field name for the API |
-| Photo table | `variant_images`, image location | ER `product_variant_photos.path`; frontend `product_variant_images` with `url` and `alt_text` | Choose table and columns; decide whether `alt_text` is kept |
 | Admin roles | Exactly two roles (SRS confirms) | Frontend `AdminUser.role` is `owner` or `staff` | Remove owner/staff from the frontend |
 | Customer account state | Active on registration; disabled accounts stay disabled | ER `users.status`: active, blocked, suspended, pending; frontend: active, blocked | Confirm the states and who can change them |
 | Order status | Only "placed"; no manual status changes | ER and SRS: pending → confirmed on verified payment; processing, completed, cancelled have no defined triggers yet; frontend shows processing, shipped, delivered, cancelled | Define the remaining transitions; align the frontend statuses |

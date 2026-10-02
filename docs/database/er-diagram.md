@@ -4,6 +4,8 @@ Source of truth for the Artistic Hub database schema. Migrations in `database/mi
 
 ## Notes
 
+- Client-facing ids (decided 2026-10-03): `users`, `customer_addresses`, `products`, `product_variants`, `tags` and `media` have a `public_id` (ULID, unique). The API accepts only `public_id` (in URLs and requests); responses show both `public_id` and the internal `id` (for reference only). The auto-increment `id` stays the primary key for foreign keys and joins.
+
 - Roles use `spatie/laravel-permission` tables (`roles`, `model_has_roles`). The two roles are `admin` and `customer` (`App\Enums\Role`), guard `web`. The package's migration also creates `permissions`, `model_has_permissions` and `role_has_permissions`; they stay empty because only roles are used.
 - Not shown: Laravel's framework tables (`password_reset_tokens`, `sessions`, `cache`, `jobs`), `users.remember_token`, and Laravel Passport's tables (`oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes`). Only `oauth_clients` (one personal access client) and `oauth_access_tokens` (sign-in tokens, linked to `users.id`) are used.
 - `users.name` is null until the customer creates their profile (registration collects only email and password; agreed 2026-10-02). Admins always have a name.
@@ -13,6 +15,8 @@ Source of truth for the Artistic Hub database schema. Migrations in `database/mi
 - `order_items.product_variant_id` is nullable, so order history survives when a variant is deleted.
 - `orders.tracking_number` is required before an order moves to `completed`.
 - Each customer has at most one cart (`carts.customer_profile_id` is unique), and a variant appears once per cart (`cart_items` is unique on `cart_id` + `product_variant_id`); adding it again increases `quantity`. Cart items store **no prices**: checkout reads the current price, stock and active state and asks the customer to reconfirm if anything changed. Paying clears only the quantities that were paid for. Deleting a variant deletes its cart items (cascade); order items keep their snapshot with `product_variant_id` set to null.
+- Catalog columns as built: `product_variants.original_price` / `selling_price` are `decimal(10,2)` with `selling_price <= original_price` (checked by the app); `stock` is unsigned; `sku` is up to 64 characters; tag `name` is up to 100 characters. Deleting a product deletes its variants and tag links (cascade); its variants' photos are detached (see `media`). Deleting a tag deletes only its links.
+- `media` (decided 2026-10-03) holds every uploaded file: variant photos (`collection = variant_photo`) and customer avatars (`collection = avatar`). It is polymorphic: `mediable_type` + `mediable_id` point at the owner (`App\Models\ProductVariant`, `App\Models\CustomerProfile`). An upload creates a row with no owner; saving the owner attaches it. Rows still unattached after 24 hours are pruned with their files (`php artisan model:prune`, scheduled daily). `path` is unique; `disk` records where the file is; `sort_order` 0 is a variant's cover. A polymorphic relation has no database foreign key, so the app does what `nullOnDelete` would: when a variant is deleted (directly, left out of a product save, or with its product) its photos get `mediable_type` / `mediable_id` set to null, and the daily prune then deletes those rows and their files.
 - Money columns are `decimal`. `orders.total_amount = subtotal - discount_amount + shipping_amount`; `order_items.total_amount = subtotal - discount_amount`.
 
 ## Diagram
@@ -27,6 +31,7 @@ erDiagram
 
     USERS {
         bigint id PK
+        string public_id UK "ULID; the only id the API accepts"
         string name "nullable until profile creation"
         string email UK
         timestamp email_verified_at "nullable"
@@ -57,7 +62,6 @@ erDiagram
         string phone
         date date_of_birth "nullable"
         string gender "nullable; male, female, other"
-        string avatar_path "nullable"
         text notes "nullable; internal only"
         timestamp created_at
         timestamp updated_at
@@ -66,6 +70,7 @@ erDiagram
 
     CUSTOMER_ADDRESSES {
         bigint id PK
+        string public_id UK "ULID; the only id the API accepts"
         bigint customer_profile_id FK
         string label "home, work, or other; default home"
         string recipient_name
@@ -83,7 +88,8 @@ erDiagram
 
     PRODUCTS {
         bigint id PK
-        string name
+        string public_id UK "ULID; the only id the API accepts"
+        string name UK "unique, ignoring case"
         string slug UK
         text description
         boolean is_active
@@ -93,6 +99,7 @@ erDiagram
 
     PRODUCT_VARIANTS {
         bigint id PK
+        string public_id UK "ULID; the only id the API accepts"
         bigint product_id FK
         string name
         string sku UK
@@ -106,17 +113,25 @@ erDiagram
         timestamp updated_at
     }
 
-    PRODUCT_VARIANT_PHOTOS {
+    MEDIA {
         bigint id PK
-        bigint product_variant_id FK
-        string path
-        integer sort_order
+        string public_id UK "ULID; the only id the API accepts"
+        string collection "variant_photo or avatar"
+        string disk "public or s3"
+        string path UK "folder per collection, random name"
+        string mime_type
+        bigint size "bytes"
+        bigint uploaded_by FK "users.id; nullable"
+        string mediable_type "owner model; null until attached"
+        bigint mediable_id "owner id; null until attached"
+        integer sort_order "0 is the cover"
         timestamp created_at
         timestamp updated_at
     }
 
     TAGS {
         bigint id PK
+        string public_id UK "ULID; the only id the API accepts"
         string name UK
         string slug UK
         timestamp created_at
@@ -222,7 +237,9 @@ erDiagram
     ROLES ||--o{ MODEL_HAS_ROLES : grants
 
     PRODUCTS ||--|{ PRODUCT_VARIANTS : has
-    PRODUCT_VARIANTS ||--o{ PRODUCT_VARIANT_PHOTOS : has
+    PRODUCT_VARIANTS ||--o{ MEDIA : "photos (polymorphic)"
+    CUSTOMER_PROFILES ||--o| MEDIA : "avatar (polymorphic)"
+    USERS ||--o{ MEDIA : uploaded
     PRODUCT_VARIANTS ||--o{ PRODUCT_VARIANT_TAGS : tagged
     TAGS ||--o{ PRODUCT_VARIANT_TAGS : attached
 

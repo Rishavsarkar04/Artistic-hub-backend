@@ -93,6 +93,20 @@ php artisan passport:client --personal --provider=users --name="Artistic Hub per
 
 ## 5b. Uploaded images
 
+**PHP upload limits.** PHP rejects large uploads before Laravel sees them.
+The app accepts avatars up to 2 MB and up to 8 product photos of 5 MB in
+one request, so set in `php.ini` (CLI and PHP-FPM; and the web server's
+body limit, e.g. nginx `client_max_body_size 50M;`):
+
+```ini
+upload_max_filesize = 5M
+post_max_size = 48M
+max_file_uploads = 20
+```
+
+Check with `php -i | grep -E "upload_max_filesize|post_max_size"`. The PHP
+defaults (2M / 8M) reject a single photo over 2 MB.
+
 Avatars (and later product photos) are stored on the disk named by
 `MEDIA_DISK` in `.env`.
 
@@ -119,13 +133,24 @@ make the image folders publicly readable with a bucket policy (leave
     "Effect": "Allow",
     "Principal": "*",
     "Action": "s3:GetObject",
-    "Resource": ["arn:aws:s3:::YOUR_BUCKET/avatars/*", "arn:aws:s3:::YOUR_BUCKET/products/*"]
+    "Resource": ["arn:aws:s3:::YOUR_BUCKET/avatars/*", "arn:aws:s3:::YOUR_BUCKET/variant-photos/*"]
   }]
 }
 ```
 
-The folders listed in `Resource` must match the cases of
-`app/Enums/MediaDirectory.php`; add both together.
+The folders listed in `Resource` must match the folders of
+`app/Enums/MediaCollection.php` (`directory()`); add both together.
+
+**Unused uploads.** A photo uploaded in a product form that is never saved
+is deleted, with its file, after `MEDIA_ORPHAN_HOURS` (default 24) by the
+daily `model:prune` task. In production the Laravel scheduler must run
+every minute (cron):
+
+```
+* * * * * cd /path/to/Artistic-hub-backend && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Run it by hand any time with `php artisan model:prune --model="App\Models\Media"`.
 
 The IAM user for `AWS_ACCESS_KEY_ID` needs `s3:PutObject`, `s3:GetObject`
 and `s3:DeleteObject` on the bucket.
@@ -168,6 +193,8 @@ Leave it running while the frontend is in use.
 | New migration ran? Apply it | `php artisan migrate` |
 | Start the database from scratch (deletes all data) | `php artisan migrate:fresh --seed`, then `php artisan passport:client --personal --provider=users` and `php artisan admin:create` |
 | Explore data | `php artisan tinker` |
+| Delete old unused uploads now | `php artisan model:prune --model="App\Models\Media"` |
+| See scheduled tasks | `php artisan schedule:list` |
 | Check what the docs could not infer | `php artisan scramble:analyze` |
 | Update the API contract for the frontend | `php artisan scramble:export` (writes `docs/api/openapi.json`; commit it with the endpoint change) |
 | Clear cached config/routes after `.env` changes | `php artisan optimize:clear` |
@@ -196,6 +223,7 @@ still use mock data until their endpoints are built.
 | `Unknown database 'artistic_hub'` | Create it (step 4). |
 | `No application encryption key` | `php artisan key:generate` |
 | `/docs/api` returns 403 | `APP_ENV` is not `local`. |
+| Upload fails with 413, or Laravel says the file "failed to upload" | PHP or web-server limits too low; see "PHP upload limits" in step 5b. |
 | Avatar URL returns 404 locally | Run `php artisan storage:link`; check `APP_URL` matches the server address. |
 | Upload fails with an S3 error | Check the `AWS_*` values and the IAM permissions (step 5b). |
 | Roles missing after a reset | `php artisan db:seed` (or `migrate:fresh --seed`). |

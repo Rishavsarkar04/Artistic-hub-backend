@@ -22,7 +22,6 @@ class CustomerProfileFactory extends Factory
             'phone' => fake()->numerify('9#########'),
             'date_of_birth' => fake()->optional()->dateTimeBetween('-70 years', '-18 years'),
             'gender' => fake()->optional()->randomElement(Gender::cases()),
-            'avatar_path' => null,
             'notes' => null,
         ];
     }

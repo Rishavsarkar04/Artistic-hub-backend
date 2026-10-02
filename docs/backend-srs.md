@@ -145,7 +145,8 @@ After the customer's first sign-in, allow profile creation.
 
 Use:
 - users.name for the customer's name.
-- customer_profiles for phone, date_of_birth, gender, avatar_path,
+- customer_profiles for phone, date_of_birth, gender (the avatar is a
+  `media` row attached to the profile),
   and other approved profile fields.
 
 customer_profiles.user_id must remain unique.
@@ -162,8 +163,10 @@ Onboarding fields (implemented 2026-10-02):
 - avatar: POST /customer/profile/avatar (multipart `avatar`: JPG, PNG or
   WebP by content, up to 2 MB, no pixel-size limit) uploads or replaces it;
   DELETE /customer/profile/avatar removes it. Stored on the media disk
-  (local in development, S3 in production) under a random name; the
-  profile returns `avatar_url` (public URL) or null.
+  (local in development, S3 in production) under a random name, as a
+  `media` row (collection avatar) attached to the profile; replacing it
+  deletes the old row and file. The profile returns `avatar_url` (public
+  URL) or null.
 
 Behavior:
 - POST /customer/profile creates it (201); a second POST returns 409.
@@ -240,6 +243,62 @@ Implemented 2026-10-02:
 Editing a saved address must never alter historical order snapshots.
 
 ## 6. Product and variant management
+
+### Implemented 2026-10-03 (admin catalog)
+
+Decisions: products are saved **whole in one request** (the admin form has
+one Save), instead of separate product/variant/photo endpoints;
+selling_price must be ≤ original_price; deleting is permanent (no soft
+delete); photos are stored on the media disk (S3 in production).
+
+- POST /admin/products and PUT /admin/products/{id}: the product (name,
+  unique ignoring case (decided 2026-10-03), description, is_active) with `variants` (1 to 50). Each
+  variant: optional public_id, name, sku, description,
+  original_price, selling_price, stock, is_active, tag_ids, photo_ids.
+  Variants with a public_id are updated (it must be this product's), without
+  one are created, and variants not sent are deleted. Variant names are
+  unique within the product, ignoring case (other products may reuse them). Slugs are never sent (decided 2026-10-03): the backend generates them
+  from the name (product) or product slug + variant name (variant) when
+  created, made unique with -2, -3…, and keeps them on later saves and
+  renames, so shop URLs never change.
+- Prices: strings or numbers with up to 2 decimals, more than 0, stored as
+  decimal(10,2) and returned as strings ("899.50"); selling ≤ original is
+  compared exactly (bcmath), never as floats.
+- SKU: letters, digits, - and _, unique across all variants (422 naming
+  the variant); slugs unique too.
+- Activation: is_active false on the product saves every variant inactive;
+  a variant is active only if both it and its product are.
+- Photos belong to variants. Upload the files first with
+  POST /admin/uploads/variant-photos (multipart `photos[]`: 1 to 8 files,
+  each JPG/PNG/WebP by content, up to 5 MB; all or nothing) → one `media`
+  row per file, not yet attached, returned in order as
+  `[{ id, url, mime_type, size, sort_order }]`; send the ids in
+  variants.*.photo_ids (up to 8, display order; the first is the cover).
+  Each id must be a variant photo that is unattached or already one of
+  this product's (so it can move between the product's variants, but never
+  be taken from another product). Photos dropped in a save are deleted
+  with their files after the save commits. Uploads never attached are
+  deleted automatically after 24 hours (decided 2026-10-03).
+  DELETE /admin/uploads/variant-photos/{id} deletes a photo and its file
+  right away: one on a saved variant (its other photos keep their order),
+  or one uploaded and removed from the form before saving. Any admin can
+  delete any variant photo; an id that is not a variant photo returns 404.
+- GET /admin/products (search name/slug/variant name/SKU, status
+  active|inactive, sort newest|name|price_low|price_high|stock_low (price
+  by the lowest/highest variant selling price, stock by total stock),
+  page, per_page; with
+  `filters` and `filter_options`) and GET /admin/products/{id}: products
+  with variants, photos (id, url, mime_type, size, sort_order) and tags.
+- DELETE /admin/products/{id}: deletes variants and tag links; the
+  variants' photos are detached (owner set to null) and removed with their
+  files by the daily prune. DELETE /admin/products/{id}/variants/{variant}:
+  deletes one variant right away (its photos detached the same way); a
+  product's last variant cannot be deleted (409).
+- Tags: GET/POST /admin/tags, PUT/DELETE /admin/tags/{id}. Names are
+  unique ignoring case and punctuation (by slug); the slug follows the
+  name on rename; deleting a tag only removes its links.
+- Not built yet: the customer variant listing (section 8) and the image
+  cleanup for uploads never saved.
 
 ### BE-CATALOG-01: Products
 
@@ -724,6 +783,13 @@ These names are a proposed shared frontend/backend contract.
 Adapt consistently to existing repository conventions. Section 17 lists
 where the frontend currently differs.
 
+Ids (decided 2026-10-03): records have a client-facing ULID (`public_id`,
+e.g. "01jbf8p2q4r6s8t0v2w4x6y8z0"). Responses return both `id` (the
+internal auto-increment id, for reference only) and `public_id`. URLs and
+request bodies only ever accept `public_id` (variants.*.public_id, and
+public ids as the values of tag_ids and photo_ids); an internal id in a
+URL or request is a 404 or a validation error.
+
 Return decimal money as strings.
 Return field-level validation errors.
 Use consistent unauthenticated, forbidden, missing-resource,
@@ -789,8 +855,9 @@ the frontend to match, rather than bending the backend to the mock.
 | Checkout | `/checkout/review`, `/checkout/payment`, status polling | `POST /orders` |
 | Money | Decimal strings (`"499.00"`) | Admin: integer paise; shop: whole rupees |
 | Selling price field | `selling_price` | Admin: `effective_price` |
-| Product save | Separate product, variant and photo endpoints | One `PUT /admin/products/{id}` with nested variants and photo URLs |
-| Photo upload | Variant image upload/remove/reorder endpoints | `POST /admin/uploads/images` returning `{ url }` |
+| Product save | One nested save (decided 2026-10-03): `POST/PUT /admin/products` with `variants[]`, each with `tag_ids` and `photos` (paths) | Same nested shape, but sends `images: [{ url, alt_text, sort_order }]` and `effective_price` |
+| Photo upload | `POST /admin/uploads/variant-photos`, field `photos[]` (1 to 8 files), returns `{ data: [{ id, url, … }] }`; save sends `variants.*.photo_ids` | `POST /admin/uploads/images`, field `file`, returns `{ url }`; save sends image URLs with alt text (no alt text in the schema) |
+| Product list | Laravel pagination; `search`, `status` (active, inactive), `sort` (newest, name, price_low, price_high, stock_low) | `Paginated<T>`; `q`; sort ids use hyphens (`price-low`, `price-high`, `stock-low`) |
 | Tracking | `PATCH /admin/orders/{order_number}/tracking` with `tracking_provider`, `tracking_number` | `PUT /admin/orders/{id}/shipment` with `courier`, `tracking_number` |
 | Order status | pending, confirmed, processing, completed, cancelled (only pending → confirmed is automated) | processing, shipped, delivered, cancelled |
 | Customer status | active, blocked, suspended, pending | active, blocked |

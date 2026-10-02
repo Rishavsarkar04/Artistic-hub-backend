@@ -16,7 +16,6 @@ return new class extends Migration
             $table->date('date_of_birth')->nullable();
             // App\Enums\Gender.
             $table->string('gender', 20)->nullable();
-            $table->string('avatar_path')->nullable();
             // Internal only: never exposed to or editable by the customer.
             $table->text('notes')->nullable();
             $table->timestamps();
