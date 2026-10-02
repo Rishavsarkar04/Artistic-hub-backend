@@ -599,6 +599,19 @@ Admin can:
 
 Customer-management mutation operations are not requested.
 
+Implemented 2026-10-02 (customer list; orders follow with the orders tables):
+- GET /admin/customers: customers only (no admins, no soft-deleted
+  accounts), whatever their account status. Query: search (name, email or
+  phone), sort (newest | oldest | name; name puts customers without a name last),
+  page, per_page (1 to 100, default 20). Response: Laravel pagination,
+  `{ data, links, meta }`, plus `filters` (the filters applied, with
+  defaults filled in) and `filter_options` (the values sort accepts). Each row: id, name, email, status,
+  profile_completed, phone, city (default address), joined_at. There is no
+  status filter (not needed for now).
+- The customer detail endpoint (GET /admin/customers/{id}) is not built
+  yet; it is deferred until requested.
+- Order count, total spent and the order-based sorts arrive with orders.
+
 ### BE-ORDER-03: Tracking only
 
 Admin can update:
@@ -778,4 +791,6 @@ the frontend to match, rather than bending the backend to the mock.
 | Tracking | `PATCH /admin/orders/{order_number}/tracking` with `tracking_provider`, `tracking_number` | `PUT /admin/orders/{id}/shipment` with `courier`, `tracking_number` |
 | Order status | pending, confirmed, processing, completed, cancelled (only pending → confirmed is automated) | processing, shipped, delivered, cancelled |
 | Customer status | active, blocked, suspended, pending | active, blocked |
+| List responses | Laravel pagination `{ data, links, meta: { current_page, per_page, total, last_page } }`; query `page`, `per_page` | Mock `Paginated<T>`: `{ items, total, page, pageSize }`; query `pageSize` |
+| Admin customer list | `search`, `sort` = newest, oldest, name; `status` on each row but no status filter; no orders count or spend yet | Query `q`; status tabs; also sorts by orders and spend, shows orders count and total spent |
 | Shipping and tax | Unconfirmed | Free-shipping threshold and a tax line |

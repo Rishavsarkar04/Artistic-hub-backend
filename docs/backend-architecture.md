@@ -27,7 +27,8 @@ As of 2026-10-02 the backend is a Laravel 13 application with:
   and `routes/api/admin.php` (section 2.1). Built so far: customer
   register/login/me/logout and admin login/me/logout (section 2.2),
   customer profile (create/read/update) and addresses
-  (list/create/update/set default).
+  (list/create/update/set default), and the admin customer list
+  (`AdminCustomerQuery`).
   Do not run `php artisan install:api`: it would register `routes/api.php`
   through the `api:` option with its own prefix and overwrite the file.
 - Installed: `laravel/passport` (personal access tokens only),
@@ -1444,6 +1445,9 @@ new kind of class appears, add its rule here.
 | DTO | `Data` | a noun for what it holds, `final readonly class` | `IssuedToken` |
 | Enum | `Enums` | singular noun, string-backed; cases in PascalCase, values snake_case | `UserStatus::Active` = `'active'` |
 | Exception | `Exceptions/{Domain}` | the situation, no `Exception` suffix; extend the Laravel exception that gives the right status | `InvalidCredentials`, `AccountNotActive` |
+| Query object | `Queries` | `{Audience}{Thing}Query`, `final class`, read-only (section 26.7) | `AdminCustomerQuery` |
+| List filters | `Data` | `{Thing}ListFilters`, `final readonly class`, built by the list Form Request's `toFilters()` | `CustomerListFilters` |
+| Sort options | `Enums` | `{Thing}Sort`, cases are the allowed `sort` values | `CustomerSort` |
 | Console command | `Console/Commands` | class in PascalCase; signature `{area}:{action}` | `CreateAdmin` / `admin:create` |
 | Model | `Models` | singular; table is the snake_case plural | `CustomerAddress` / `customer_addresses` |
 

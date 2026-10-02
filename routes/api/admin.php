@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\Auth\SessionController;
+use App\Http\Controllers\Api\Admin\CustomerController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,5 +35,8 @@ Route::prefix('api/v1/admin')->middleware('api')->name('admin.v1.')->group(funct
             Route::get('me', [SessionController::class, 'show'])->name('me');
             Route::post('logout', [SessionController::class, 'destroy'])->name('logout');
         });
+
+        // Read-only: no customer-management mutations are in scope.
+        Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
     });
 });
