@@ -3690,19 +3690,19 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string",
+                        "type": "integer",
                         "description": "Internal database id: shown for reference only; URLs take order_number."
                     },
                     "order_number": {
                         "type": "string"
                     },
                     "status": {
-                        "type": "string",
-                        "description": "pending (checkout waiting for payment), confirmed, processing, completed or cancelled."
+                        "description": "pending (checkout waiting for payment), confirmed, processing, completed or cancelled.\n| |\n|---|\n| `pending` <br/> Checkout started, payment not confirmed: not a placed order. |\n| `confirmed` <br/> Paid (verified by the Razorpay webhook). |\n| `processing` <br/> Not used yet. |\n| `completed` <br/> Fulfilled: an admin added tracking (handed to the courier). Not \"delivered\": there is no delivery tracking. |\n| `cancelled` <br/>  |",
+                        "$ref": "#/components/schemas/OrderStatus"
                     },
                     "payment_status": {
-                        "type": "string",
-                        "description": "The newest payment attempt's status."
+                        "description": "The newest payment attempt's status.",
+                        "$ref": "#/components/schemas/PaymentStatus"
                     },
                     "placed_at": {
                         "type": [
@@ -3732,10 +3732,16 @@
                         ]
                     },
                     "cancellation_reason": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "review_reason": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Why this order needs an admin's attention (e.g. paid when stock was short); null when nothing to check."
                     },
                     "fare_breakup": {
@@ -3808,7 +3814,10 @@
                                 "type": "string"
                             },
                             "address_line_2": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "city": {
                                 "type": "string"
@@ -3838,18 +3847,39 @@
                         "type": "object",
                         "properties": {
                             "provider": {
-                                "type": "string",
-                                "description": "The courier key (e.g. delhivery); null until tracking is added."
+                                "anyOf": [
+                                    {
+                                        "description": "The courier key (e.g. delhivery); null until tracking is added.",
+                                        "$ref": "#/components/schemas/TrackingProvider"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
                             },
                             "provider_name": {
                                 "type": [
                                     "string",
                                     "null"
                                 ],
-                                "description": "The courier's display name, e.g. Blue Dart."
+                                "description": "The courier's display name, e.g. Blue Dart.",
+                                "enum": [
+                                    "Delhivery",
+                                    "Blue Dart",
+                                    "DTDC",
+                                    "India Post",
+                                    "Ekart",
+                                    "Xpressbees",
+                                    "Shadowfax",
+                                    "Ecom Express",
+                                    null
+                                ]
                             },
                             "number": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "updated_at": {
                                 "type": [
@@ -3938,19 +3968,19 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string",
+                        "type": "integer",
                         "description": "Internal database id: shown for reference only; URLs take order_number."
                     },
                     "order_number": {
                         "type": "string"
                     },
                     "status": {
-                        "type": "string",
-                        "description": "confirmed, processing, completed or cancelled."
+                        "description": "confirmed, processing, completed or cancelled.\n| |\n|---|\n| `pending` <br/> Checkout started, payment not confirmed: not a placed order. |\n| `confirmed` <br/> Paid (verified by the Razorpay webhook). |\n| `processing` <br/> Not used yet. |\n| `completed` <br/> Fulfilled: an admin added tracking (handed to the courier). Not \"delivered\": there is no delivery tracking. |\n| `cancelled` <br/>  |",
+                        "$ref": "#/components/schemas/OrderStatus"
                     },
                     "payment_status": {
-                        "type": "string",
-                        "description": "The newest payment attempt's status."
+                        "description": "The newest payment attempt's status.",
+                        "$ref": "#/components/schemas/PaymentStatus"
                     },
                     "placed_at": {
                         "type": [
@@ -4033,12 +4063,19 @@
                         "description": "razorpay"
                     },
                     "status": {
-                        "type": "string",
-                        "description": "pending, processing, paid, failed, cancelled, refunded."
+                        "description": "pending, processing, paid, failed, cancelled, refunded.",
+                        "$ref": "#/components/schemas/PaymentStatus"
                     },
                     "method": {
-                        "type": "string",
-                        "description": "Null until paid."
+                        "anyOf": [
+                            {
+                                "description": "Null until paid.",
+                                "$ref": "#/components/schemas/PaymentMethod"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "amount": {
                         "type": "string"
@@ -4050,11 +4087,17 @@
                         "type": "string"
                     },
                     "transaction_id": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Razorpay payment id (pay_\u2026), once paid."
                     },
                     "payment_link_id": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Razorpay payment link id (plink_\u2026); null when the link could not be created."
                     },
                     "created_at": {
@@ -4082,7 +4125,10 @@
                         ]
                     },
                     "failure_reason": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Why the payment could not be started, e.g. Razorpay refused the request."
                     }
                 },
@@ -4108,7 +4154,7 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string",
+                        "type": "integer",
                         "description": "Internal database id: shown for reference only; URLs and requests take reference_id."
                     },
                     "reference_id": {
@@ -4121,15 +4167,29 @@
                         "type": "string"
                     },
                     "description": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "is_active": {
-                        "type": "string"
+                        "type": "boolean"
                     },
                     "variants": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/AdminProductVariantResource"
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/AdminProductVariantResource"
+                                },
+                                {
+                                    "type": "object",
+                                    "required": [
+                                        "photos",
+                                        "tags"
+                                    ]
+                                }
+                            ]
                         }
                     },
                     "created_at": {
@@ -4560,7 +4620,10 @@
                         "type": "string"
                     },
                     "payment_url": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Redirect the browser here (Razorpay's payment page)."
                     },
                     "expires_at": {
@@ -4727,15 +4790,15 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string",
+                        "type": "integer",
                         "description": "Internal database id: shown for reference only; URLs take order_number."
                     },
                     "order_number": {
                         "type": "string"
                     },
                     "status": {
-                        "type": "string",
-                        "description": "pending until the payment is confirmed, then confirmed, processing, completed; or cancelled."
+                        "description": "pending until the payment is confirmed, then confirmed, processing, completed; or cancelled.\n| |\n|---|\n| `pending` <br/> Checkout started, payment not confirmed: not a placed order. |\n| `confirmed` <br/> Paid (verified by the Razorpay webhook). |\n| `processing` <br/> Not used yet. |\n| `completed` <br/> Fulfilled: an admin added tracking (handed to the courier). Not \"delivered\": there is no delivery tracking. |\n| `cancelled` <br/>  |",
+                        "$ref": "#/components/schemas/OrderStatus"
                     },
                     "placed_at": {
                         "type": [
@@ -4764,7 +4827,10 @@
                         ]
                     },
                     "cancellation_reason": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "payment": {
                         "type": [
@@ -4776,12 +4842,19 @@
                                 "type": "string"
                             },
                             "status": {
-                                "type": "string",
-                                "description": "The newest payment attempt's status: pending, processing, paid, failed, cancelled, refunded."
+                                "description": "The newest payment attempt's status: pending, processing, paid, failed, cancelled, refunded.",
+                                "$ref": "#/components/schemas/PaymentStatus"
                             },
                             "method": {
-                                "type": "string",
-                                "description": "Null until paid."
+                                "anyOf": [
+                                    {
+                                        "description": "Null until paid.",
+                                        "$ref": "#/components/schemas/PaymentMethod"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
                             },
                             "amount": {
                                 "type": "string"
@@ -4894,7 +4967,10 @@
                                 "type": "string"
                             },
                             "address_line_2": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "city": {
                                 "type": "string"
@@ -4924,18 +5000,39 @@
                         "type": "object",
                         "properties": {
                             "provider": {
-                                "type": "string",
-                                "description": "The courier key (e.g. delhivery); null until tracking is added."
+                                "anyOf": [
+                                    {
+                                        "description": "The courier key (e.g. delhivery); null until tracking is added.",
+                                        "$ref": "#/components/schemas/TrackingProvider"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
                             },
                             "provider_name": {
                                 "type": [
                                     "string",
                                     "null"
                                 ],
-                                "description": "The courier's display name, e.g. Blue Dart."
+                                "description": "The courier's display name, e.g. Blue Dart.",
+                                "enum": [
+                                    "Delhivery",
+                                    "Blue Dart",
+                                    "DTDC",
+                                    "India Post",
+                                    "Ekart",
+                                    "Xpressbees",
+                                    "Shadowfax",
+                                    "Ecom Express",
+                                    null
+                                ]
                             },
                             "number": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             }
                         },
                         "required": [
@@ -4973,19 +5070,19 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string",
+                        "type": "integer",
                         "description": "Internal database id: shown for reference only; URLs take order_number."
                     },
                     "order_number": {
                         "type": "string"
                     },
                     "status": {
-                        "type": "string",
-                        "description": "confirmed, processing, completed or cancelled (pending orders are not listed)."
+                        "description": "confirmed, processing, completed or cancelled (pending orders are not listed).\n| |\n|---|\n| `pending` <br/> Checkout started, payment not confirmed: not a placed order. |\n| `confirmed` <br/> Paid (verified by the Razorpay webhook). |\n| `processing` <br/> Not used yet. |\n| `completed` <br/> Fulfilled: an admin added tracking (handed to the courier). Not \"delivered\": there is no delivery tracking. |\n| `cancelled` <br/>  |",
+                        "$ref": "#/components/schemas/OrderStatus"
                     },
                     "payment_status": {
-                        "type": "string",
-                        "description": "The newest payment attempt's status (paid for placed orders; refunded later)."
+                        "description": "The newest payment attempt's status (paid for placed orders; refunded later).",
+                        "$ref": "#/components/schemas/PaymentStatus"
                     },
                     "placed_at": {
                         "type": [
@@ -5296,7 +5393,7 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string",
+                        "type": "integer",
                         "description": "Internal database id: shown for reference only."
                     },
                     "product_name": {
@@ -5323,7 +5420,7 @@
                         "type": "string"
                     },
                     "quantity": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "subtotal": {
                         "type": "string"
@@ -5360,6 +5457,43 @@
                     "total_low"
                 ],
                 "title": "OrderSort"
+            },
+            "OrderStatus": {
+                "type": "string",
+                "description": "orders.status. So far: pending \u2192 confirmed (verified payment), pending \u2192 cancelled (link expired, cancelled or replaced, or the payment could not start), confirmed \u2192 completed (admin saves tracking).\n| |\n|---|\n| `pending` <br/> Checkout started, payment not confirmed: not a placed order. |\n| `confirmed` <br/> Paid (verified by the Razorpay webhook). |\n| `processing` <br/> Not used yet. |\n| `completed` <br/> Fulfilled: an admin added tracking (handed to the courier). Not \"delivered\": there is no delivery tracking. |\n| `cancelled` <br/>  |",
+                "enum": [
+                    "pending",
+                    "confirmed",
+                    "processing",
+                    "completed",
+                    "cancelled"
+                ],
+                "title": "OrderStatus"
+            },
+            "PaymentMethod": {
+                "type": "string",
+                "description": "payments.method, as reported by the payment provider once the customer pays.\n",
+                "enum": [
+                    "card",
+                    "upi",
+                    "netbanking",
+                    "wallet",
+                    "emi"
+                ],
+                "title": "PaymentMethod"
+            },
+            "PaymentStatus": {
+                "type": "string",
+                "description": "payments.status.\n",
+                "enum": [
+                    "pending",
+                    "processing",
+                    "paid",
+                    "failed",
+                    "cancelled",
+                    "refunded"
+                ],
+                "title": "PaymentStatus"
             },
             "ProductSort": {
                 "type": "string",

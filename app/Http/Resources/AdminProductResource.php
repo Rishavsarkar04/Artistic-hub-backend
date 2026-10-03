@@ -6,7 +6,11 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** A product with all its variants, as the admin list and edit form use it. @mixin Product */
+/**
+ * A product with all its variants, as the admin list and edit form use it.
+ *
+ * @mixin Product
+ */
 class AdminProductResource extends JsonResource
 {
     /** @return array<string, mixed> */
