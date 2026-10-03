@@ -23,6 +23,9 @@ return new class extends Migration
             $table->decimal('discount_amount', 10, 2)->default(0);
             $table->decimal('shipping_amount', 10, 2)->default(0);
             $table->decimal('total_amount', 10, 2);
+            // ISO 4217 code all of the order's amounts (and its items') are in; copied from the shop
+            // currency (config app.currency) at checkout.
+            $table->string('currency', 3);
 
             // Snapshots, copied at checkout: later profile or address edits never change the order.
             $table->string('customer_name');

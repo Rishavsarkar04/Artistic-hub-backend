@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Order;
+use App\Support\Currency;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -29,6 +30,7 @@ class OrderConfirmed extends Mailable implements ShouldQueue
     {
         return new Content(markdown: 'mail.orders.confirmed', with: [
             'order' => $this->order->loadMissing('items'),
+            'symbol' => Currency::symbol($this->order->currency),
             'ordersUrl' => rtrim((string) config('app.frontend_url'), '/').'/account/orders/'.$this->order->order_number,
         ]);
     }

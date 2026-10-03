@@ -8,44 +8,34 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * An order as the customer sees it: status, the newest payment's status, snapshots and totals.
+ * One order as admins see it: everything the customer sees (from the order's snapshots), plus the review
+ * reason, the customer's reference_id and every payment attempt.
  *
  * @property Order $resource
  */
-class CustomerOrderResource extends JsonResource
+class AdminOrderResource extends JsonResource
 {
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         $order = $this->resource;
-        $payment = $order->latestPayment;
 
         return [
             /** Internal database id: shown for reference only; URLs take order_number. */
             'id' => $order->id,
             'order_number' => $order->order_number,
-            /** pending until the payment is confirmed, then confirmed, processing, completed; or cancelled. */
+            /** pending (checkout waiting for payment), confirmed, processing, completed or cancelled. */
             'status' => $order->status,
-            /** Null while pending: the order date, set when the payment is confirmed. */
+            /** The newest payment attempt's status. */
+            'payment_status' => $order->latestPayment?->status,
+            /** The order date; null while pending or when the payment never went through. */
             'placed_at' => $order->placed_at?->toIso8601String(),
+            /** When the customer pressed Pay. */
             'created_at' => $order->created_at?->toIso8601String(),
             'cancelled_at' => $order->cancelled_at?->toIso8601String(),
             'cancellation_reason' => $order->cancellation_reason,
-            'payment' => $payment === null ? null : [
-                'payment_number' => $payment->payment_number,
-                /** The newest payment attempt's status: pending, processing, paid, failed, cancelled, refunded. */
-                'status' => $payment->status,
-                /** Null until paid. */
-                'method' => $payment->method,
-                'amount' => $payment->amount,
-                ...Currency::fields($payment->currency),
-                /** True while the link can still be paid: show "Complete payment" and redirect to payment_url. */
-                'can_pay' => $payment->isPayable(),
-                /** Only while can_pay is true. */
-                'payment_url' => $payment->isPayable() ? $payment->payment_url : null,
-                'expires_at' => $payment->expires_at?->toIso8601String(),
-                'paid_at' => $payment->paid_at?->toIso8601String(),
-            ],
+            /** Why this order needs an admin's attention (e.g. paid when stock was short); null when nothing to check. */
+            'review_reason' => $order->review_reason,
             /** Rupees as strings. total_amount = subtotal - discount_amount + shipping_amount; prices include GST. */
             'fare_breakup' => [
                 /** ISO 4217 code all amounts on this order are in (e.g. INR), and its display symbol (₹). */
@@ -55,7 +45,9 @@ class CustomerOrderResource extends JsonResource
                 'shipping_amount' => $order->shipping_amount,
                 'total_amount' => $order->total_amount,
             ],
+            /** As at checkout. reference_id is the customer's current account (also for a deleted one). */
             'customer' => [
+                'reference_id' => $order->customerProfile?->user?->reference_id,
                 'name' => $order->customer_name,
                 'email' => $order->customer_email,
                 'phone' => $order->customer_phone,
@@ -76,6 +68,8 @@ class CustomerOrderResource extends JsonResource
                 'number' => $order->tracking_number,
             ],
             'items' => OrderItemResource::collection($order->items),
+            /** Every payment attempt, oldest first; the last one is the current payment_status. */
+            'payments' => AdminPaymentResource::collection($order->payments),
         ];
     }
 }

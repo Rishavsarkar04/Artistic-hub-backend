@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\CartItem;
+use App\Support\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -48,6 +49,7 @@ class CartItemResource extends JsonResource
                 'original_price' => $variant->original_price,
                 /** What the customer pays per unit, now. */
                 'selling_price' => $variant->selling_price,
+                ...Currency::fields(),
                 /** Units left: the most this item's quantity can be. */
                 'stock' => $variant->stock,
                 /** The first photo, or null. */

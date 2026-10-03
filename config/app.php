@@ -60,6 +60,13 @@ return [
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
 
     /*
+    | The shop's currency (ISO 4217). Every product price is in it; checkout copies it onto each order,
+    | and the payment copies it from the order. Not an env setting: changing it is a business decision,
+    | and existing orders keep the currency they were charged in.
+    */
+    'currency' => 'INR',
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------

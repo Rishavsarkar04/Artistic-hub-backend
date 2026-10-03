@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\ProductVariant;
+use App\Support\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -33,6 +34,8 @@ class ShopVariantCardResource extends JsonResource
             'original_price' => $this->original_price,
             /** What the customer pays; lower than original_price when discounted. */
             'selling_price' => $this->selling_price,
+            /** The prices' currency (the shop currency) and its display symbol. */
+            ...Currency::fields(),
             /** The first photo, or null. */
             'cover_url' => $cover?->url(),
             /** The second photo, shown on hover; null when there is only one photo (keep showing the cover). */

@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Payment;
+use App\Support\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,7 +23,8 @@ class CheckoutPaymentResource extends JsonResource
             'payment_number' => $this->resource->payment_number,
             /** Rupees as a string; prices include GST and there is no shipping fare yet. */
             'total_amount' => $this->resource->amount,
-            'currency' => $this->resource->currency,
+            /** ISO 4217 (e.g. INR) and its display symbol (₹). */
+            ...Currency::fields($this->resource->currency),
             /** Redirect the browser here (Razorpay's payment page). */
             'payment_url' => $this->resource->payment_url,
             /** The link stops working after this; press Pay again for a new one. */

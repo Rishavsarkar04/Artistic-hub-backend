@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\ProductVariant;
+use App\Support\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,6 +25,8 @@ class AdminProductVariantResource extends JsonResource
             'original_price' => $this->original_price,
             /** Rupees as a string; never more than original_price. */
             'selling_price' => $this->selling_price,
+            /** The prices' currency (the shop currency) and its display symbol. */
+            ...Currency::fields(),
             'stock' => $this->stock,
             'is_active' => $this->is_active,
             /** In display order; the first is the cover. Send their reference_ids back as photo_ids to keep them. */

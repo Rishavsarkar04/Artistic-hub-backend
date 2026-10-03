@@ -108,6 +108,7 @@ class CheckoutTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.total_amount', '2698.50')
             ->assertJsonPath('data.currency', 'INR')
+            ->assertJsonPath('data.currency_symbol', '₹')
             ->assertJsonPath('data.expires_at', now()->addMinutes(30)->toIso8601String());
 
         $order = Order::sole();
@@ -130,6 +131,7 @@ class CheckoutTest extends TestCase
         $this->assertSame(['1199.00', '899.50', 3, '2698.50', '2698.50'], [$item->original_unit_price, $item->selling_unit_price, $item->quantity, $item->subtotal, $item->total_amount]);
 
         $this->assertSame(PaymentStatus::Pending, $payment->status);
+        $this->assertSame('INR', $order->currency);
         $this->assertSame(['razorpay', '2698.50', 'INR'], [$payment->provider, $payment->amount, $payment->currency]);
         $this->assertStringStartsWith('plink_', $payment->payment_session_id);
 

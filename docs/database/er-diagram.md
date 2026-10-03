@@ -20,6 +20,7 @@ Source of truth for the Artistic Hub database schema. Migrations in `database/mi
 - Checkout (built 2026-10-03): an order is created `pending` with its snapshots when the customer presses Pay, and `placed_at` (the order date the customer sees) is set only when the payment is confirmed and the status becomes `confirmed`; there is no separate `confirmed_at` (decided 2026-10-03). `order_number` looks like `ORD-20261003-7K2Q9M`. Prices include GST and no shipping is charged yet, so `shipping_amount` is 0; `discount_amount` is an order-level discount (none yet), not the MRP savings. `order_items.variant_photo_path` is the media path of the variant's cover at checkout. Each payment row is one Razorpay payment link: `payment_number` (`PAY` + ULID) is sent as Razorpay's `reference_id`, `payment_session_id` is the link id (`plink_…`), `payment_url` is the page the customer is sent to and `expires_at` when it stops working; `transaction_id` and `method` are filled from the confirmed payment (`method` is null until then). An order can have several payment rows (a retry after a failed or expired link); the newest one (`Order::latestPayment()`) gives the order's payment status, and `orders` keeps no copy of it.
 - How checkout fills `orders`, `order_items` and `payments` (amount formulas, snapshots, order number, `created_at` vs `placed_at`, `latestPayment`): `docs/checkout-and-payments.md`.
 - `orders.review_reason` (added 2026-10-03) says why an admin should look at an order, for example it was paid when stock was short (there is no stock reservation). Null when there is nothing to check. Never shown to customers.
+- Currency (decided 2026-10-03): the shop has one currency, `config('app.currency')` (`INR`), so product prices have no currency column. Checkout copies it to `orders.currency`, which covers every amount on the order and its items. `payments.currency` is copied from the order, and is what Razorpay charged.
 - Money columns are `decimal`. `orders.total_amount = subtotal - discount_amount + shipping_amount`; `order_items.total_amount = subtotal - discount_amount`.
 
 ## Diagram
@@ -174,6 +175,7 @@ erDiagram
         decimal discount_amount "total item or order discount"
         decimal shipping_amount "delivery fare"
         decimal total_amount "subtotal - discount + shipping"
+        string currency "ISO 4217, e.g. INR; for all order and item amounts"
         string customer_name "customer snapshot"
         string customer_email "customer snapshot"
         string customer_phone "customer snapshot"

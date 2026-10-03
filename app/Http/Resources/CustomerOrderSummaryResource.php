@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\Media\MediaStorageService;
+use App\Support\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -35,6 +36,8 @@ class CustomerOrderSummaryResource extends JsonResource
             'placed_at' => $order->placed_at?->toIso8601String(),
             /** Rupees as a string. */
             'total_amount' => $order->total_amount,
+            /** ISO 4217 (e.g. INR) and its display symbol (₹). */
+            ...Currency::fields($order->currency),
             /** Total units across all lines. */
             'item_count' => (int) $order->items->sum('quantity'),
             /** The first line, for the card's picture and title ("Amber & Sandalwood and 2 more"). */

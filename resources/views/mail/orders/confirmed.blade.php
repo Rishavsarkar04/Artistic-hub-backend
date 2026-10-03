@@ -7,9 +7,9 @@ Hi {{ $order->customer_name }}, we've received your payment. Your order **{{ $or
 | Item | Qty | Amount |
 |:-----|:---:|-------:|
 @foreach ($order->items as $item)
-| {{ $item->product_name }} ({{ $item->variant_name }}) | {{ $item->quantity }} | ₹{{ $item->total_amount }} |
+| {{ $item->product_name }} ({{ $item->variant_name }}) | {{ $item->quantity }} | {{ $symbol }}{{ $item->total_amount }} |
 @endforeach
-| **Total** | | **₹{{ $order->total_amount }}** |
+| **Total** | | **{{ $symbol }}{{ $order->total_amount }}** |
 </x-mail::table>
 
 Prices include GST.

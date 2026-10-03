@@ -2,6 +2,7 @@
 
 namespace App\Services\Orders;
 
+use App\Data\CustomerOrderListFilters;
 use App\Models\CustomerProfile;
 use App\Models\Order;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -13,18 +14,19 @@ final class CustomerOrderService
     /**
      * The customer's placed orders (placed_at set, i.e. payment confirmed), newest first. Pending and
      * failed checkouts are not orders yet, so they are left out; an order cancelled after it was placed
-     * stays in the list.
+     * stays in the list. Optionally only one status.
      *
      * @return LengthAwarePaginator<int, Order>
      */
-    public function listOrders(CustomerProfile $profile, int $perPage): LengthAwarePaginator
+    public function listOrders(CustomerProfile $profile, CustomerOrderListFilters $filters): LengthAwarePaginator
     {
         return $profile->orders()
             ->whereNotNull('placed_at')
+            ->when($filters->status, fn ($query, $status) => $query->where('status', $status))
             ->with(['items', 'latestPayment'])
             ->latest('placed_at')
             ->latest('id')
-            ->paginate($perPage);
+            ->paginate($filters->perPage);
     }
 
     /**

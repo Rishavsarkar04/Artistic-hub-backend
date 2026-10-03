@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Cart;
+use App\Support\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -31,6 +32,8 @@ class CartResource extends JsonResource
              * their rules are not decided yet (backend SRS, BE-CHECKOUT-02).
              */
             'fare_breakup' => [
+                /** The amounts' currency (the shop currency) and its display symbol. */
+                ...Currency::fields(),
                 /** Original price (MRP) × quantity, summed. */
                 'mrp_total' => $this->mrpTotal(),
                 /** mrp_total − subtotal: what the customer saves. */

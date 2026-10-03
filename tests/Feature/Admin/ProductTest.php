@@ -112,6 +112,7 @@ class ProductTest extends TestCase
             ->assertJsonPath('data.variants.0.slug', 'winter-spice-small-4-oz')
             ->assertJsonPath('data.variants.0.original_price', '999.00')
             ->assertJsonPath('data.variants.0.selling_price', '899.50')
+            ->assertJsonPath('data.variants.0.currency', 'INR')
             ->assertJsonPath('data.variants.0.tags.0.name', 'Woody')
             ->assertJsonPath('data.variants.0.photos.0.reference_id', $cover)
             ->assertJsonPath('data.variants.0.photos.0.sort_order', 0)

@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Api\Admin\Auth\SessionController;
 use App\Http\Controllers\Api\Admin\CustomerController;
+use App\Http\Controllers\Api\Admin\OrderController;
 use App\Http\Controllers\Api\Admin\ProductController;
 use App\Http\Controllers\Api\Admin\ProductVariantController;
 use App\Http\Controllers\Api\Admin\TagController;
 use App\Http\Controllers\Api\Admin\VariantPhotoController;
+use App\Support\OrderNumber;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -42,6 +44,11 @@ Route::prefix('api/v1/admin')->middleware('api')->name('admin.v1.')->group(funct
 
         // Read-only: no customer-management mutations are in scope.
         Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
+
+        Route::controller(OrderController::class)->prefix('orders')->name('orders.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('{order}', 'show')->where('order', OrderNumber::PATTERN)->name('show');
+        });
 
         // Catalog. A product is saved whole, with its variants, tags and photo ids (one Save in the form).
         Route::apiResource('products', ProductController::class)->whereUlid('product');

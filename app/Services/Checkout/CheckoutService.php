@@ -18,6 +18,7 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Services\Cart\CartService;
 use App\Services\Payments\PaymentCancellationService;
+use App\Support\Currency;
 use App\Support\Money;
 use App\Support\OrderNumber;
 use Carbon\CarbonImmutable;
@@ -198,6 +199,7 @@ final class CheckoutService
             'discount_amount' => $discountAmount,
             'shipping_amount' => $shippingAmount,
             'total_amount' => Money::add(Money::subtract($subtotal, $discountAmount), $shippingAmount),
+            'currency' => Currency::shop(),
             'customer_name' => $profile->user->name,
             'customer_email' => $profile->user->email,
             'customer_phone' => $profile->phone,
@@ -236,7 +238,7 @@ final class CheckoutService
             'provider' => 'razorpay',
             'status' => PaymentStatus::Pending,
             'amount' => $order->total_amount,
-            'currency' => config('services.razorpay.currency'),
+            'currency' => $order->currency,
         ]);
         $order->payments()->save($payment);
 

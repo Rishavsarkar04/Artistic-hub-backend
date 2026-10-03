@@ -59,6 +59,8 @@ class ProductVariantListingTest extends TestCase
             ->assertJsonPath('data.0.product.name', 'Amber & Sandalwood')
             ->assertJsonPath('data.0.original_price', '1199.00')
             ->assertJsonPath('data.0.selling_price', '899.00')
+            ->assertJsonPath('data.0.currency', 'INR')
+            ->assertJsonPath('data.0.currency_symbol', '₹')
             ->assertJsonPath('data.0.cover_url', $cover->url())
             ->assertJsonPath('data.0.hover_url', $hover->url())
             ->assertJsonPath('data.0.tags.0.slug', 'woody')

@@ -47,6 +47,8 @@ class ProductVariantDetailTest extends TestCase
             ->assertJsonPath('data.sku', 'AS-S')
             ->assertJsonPath('data.original_price', '1199.00')
             ->assertJsonPath('data.selling_price', '899.00')
+            ->assertJsonPath('data.currency', 'INR')
+            ->assertJsonPath('data.currency_symbol', '₹')
             ->assertJsonPath('data.stock', 4)
             ->assertJsonPath('data.in_stock', true)
             ->assertJsonPath('data.product.name', 'Amber & Sandalwood')

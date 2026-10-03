@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Media;
 use App\Models\ProductVariant;
+use App\Support\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,6 +31,8 @@ class ShopVariantDetailResource extends JsonResource
             'original_price' => $this->original_price,
             /** What the customer pays; lower than original_price when discounted. */
             'selling_price' => $this->selling_price,
+            /** The prices' currency (the shop currency) and its display symbol. */
+            ...Currency::fields(),
             /** Units left; the most that can be added to the cart. */
             'stock' => $this->stock,
             /** False when stock is 0: show "Out of stock" and disable Add to cart. */

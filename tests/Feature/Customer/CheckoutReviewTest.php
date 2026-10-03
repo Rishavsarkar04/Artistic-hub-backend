@@ -64,7 +64,7 @@ class CheckoutReviewTest extends TestCase
             ->assertJsonPath('data.items.0.quantity', 4)
             ->assertJsonPath('data.items.0.subtotal', '3596.00')
             ->assertJsonPath('data.item_count', 4)
-            ->assertJsonPath('data.fare_breakup', ['mrp_total' => '4796.00', 'discount' => '1200.00', 'subtotal' => '3596.00']);
+            ->assertJsonPath('data.fare_breakup', ['currency' => 'INR', 'currency_symbol' => '₹', 'mrp_total' => '4796.00', 'discount' => '1200.00', 'subtotal' => '3596.00']);
     }
 
     public function test_the_review_uses_current_prices(): void

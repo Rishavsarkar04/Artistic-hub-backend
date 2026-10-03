@@ -48,7 +48,6 @@ return [
         'callback_url' => env('RAZORPAY_CALLBACK_URL', 'http://localhost:5173/checkout/result'),
         // How long a payment link stays payable (Razorpay needs at least 15 minutes).
         'link_expiry_minutes' => (int) env('RAZORPAY_LINK_EXPIRY_MINUTES', 30),
-        'currency' => 'INR',
     ],
 
 ];

@@ -79,6 +79,8 @@ class OrderTest extends TestCase
             ->assertJsonPath('data.1.status', 'confirmed')
             ->assertJsonPath('data.1.payment_status', 'paid')
             ->assertJsonPath('data.1.total_amount', '1799.00')
+            ->assertJsonPath('data.1.currency', 'INR')
+            ->assertJsonPath('data.1.currency_symbol', '₹')
             ->assertJsonPath('data.1.item_count', 2)
             ->assertJsonPath('data.1.line_count', 1)
             ->assertJsonPath('data.1.first_item', ['product_name' => 'Amber & Sandalwood', 'variant_name' => 'Small', 'photo_url' => $cover->url()])
@@ -101,6 +103,26 @@ class OrderTest extends TestCase
 
         // Still reachable by number for the result page.
         $this->getJson("/api/v1/customer/orders/{$pending}")->assertOk();
+    }
+
+    public function test_the_list_can_be_filtered_by_status(): void
+    {
+        $confirmed = $this->placeOrder(1);
+        $this->markPlaced($confirmed, '2026-10-01 10:00:00');
+        $cancelled = $this->placeOrder(2);
+        $this->markPlaced($cancelled, '2026-10-02 10:00:00')->forceFill(['status' => OrderStatus::Cancelled, 'cancelled_at' => now()])->save();
+
+        $this->getJson('/api/v1/customer/orders?status=cancelled')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.order_number', $cancelled)
+            ->assertJsonPath('filters', ['status' => 'cancelled', 'per_page' => 10])
+            ->assertJsonPath('filter_options.status', ['confirmed', 'processing', 'completed', 'cancelled']);
+        $this->getJson('/api/v1/customer/orders?status=confirmed')->assertJsonCount(1, 'data')->assertJsonPath('data.0.order_number', $confirmed);
+        $this->getJson('/api/v1/customer/orders')->assertJsonCount(2, 'data')->assertJsonPath('filters.status', null);
+
+        // Pending checkouts are never listed, so pending is not a filter value.
+        $this->getJson('/api/v1/customer/orders?status=pending')->assertUnprocessable()->assertJsonValidationErrors('status');
     }
 
     public function test_the_list_is_paginated_and_only_the_customers_own(): void
@@ -131,7 +153,7 @@ class OrderTest extends TestCase
             ->assertJsonPath('data.payment.can_pay', true)
             ->assertJsonPath('data.payment.payment_url', 'https://rzp.io/i/abc')
             ->assertJsonPath('data.payment.amount', '1799.00')
-            ->assertJsonPath('data.fare_breakup', ['subtotal' => '1799.00', 'discount_amount' => '0.00', 'shipping_amount' => '0.00', 'total_amount' => '1799.00'])
+            ->assertJsonPath('data.fare_breakup', ['currency' => 'INR', 'currency_symbol' => '₹', 'subtotal' => '1799.00', 'discount_amount' => '0.00', 'shipping_amount' => '0.00', 'total_amount' => '1799.00'])
             ->assertJsonPath('data.customer.name', 'Asha Rao')
             ->assertJsonPath('data.shipping_address.city', 'Bengaluru')
             ->assertJsonPath('data.items.0.product_name', 'Amber & Sandalwood')

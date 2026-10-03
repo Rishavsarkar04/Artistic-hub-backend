@@ -573,7 +573,9 @@ customer sees the new amount there and can cancel; an unpaid pending order
 never becomes a placed order. This replaces "require renewed review"
 below.
 
-Decided 2026-10-03 for step 4: prices include GST (nothing is added);
+Decided 2026-10-03 for step 4: one shop currency, `config('app.currency')`
+(`INR`), copied to `orders.currency` and from there to
+`payments.currency`; prices include GST (nothing is added);
 no shipping fare for now (`shipping_amount` 0); `discount_amount` is an
 order-level discount (none yet; the MRP savings are not a discount on the
 order); no stock reservation during payment (stock is checked at checkout
@@ -770,7 +772,9 @@ Customers can list and view their own placed orders, including:
 Pending checkout records should not appear as successfully placed orders.
 
 Built 2026-10-03: GET /customer/orders lists orders with `placed_at` set
-(newest first, paginated, default 10, max 50); GET /customer/orders/{order_number}
+(newest first, paginated, default 10, max 50; optional `status` filter:
+confirmed | processing | completed | cancelled; response adds `filters`
+and `filter_options`); GET /customer/orders/{order_number}
 shows one order in any status. Details: `docs/checkout-and-payments.md`,
 sections 8 and 9.
 
@@ -797,6 +801,35 @@ Implemented 2026-10-02 (customer list; orders follow with the orders tables):
 - The customer detail endpoint (GET /admin/customers/{id}) is not built
   yet; it is deferred until requested.
 - Order count, total spent and the order-based sorts arrive with orders.
+
+Implemented 2026-10-03 (admin order list):
+- GET /admin/orders: placed orders only (`placed_at` set, i.e. payment
+  confirmed); pending and failed checkouts are not listed. Query:
+  - search: order number, customer name, email or phone, or delivery city
+    (from the order's snapshot);
+  - status: confirmed | processing | completed | cancelled (`pending` is
+    rejected);
+  - customer_id: a customer's reference_id, for only their orders;
+  - sort: newest | oldest (by `placed_at`) | total_high | total_low;
+  - page, per_page (1 to 100, default 20).
+- Response: `{ data, links, meta }` plus `filters` and `filter_options`
+  (status and sort values). Each row: id, order_number, status,
+  payment_status, placed_at, customer { reference_id, name, email, phone },
+  city, item_count (units), total_amount, needs_review (true when the
+  order has a `review_reason`).
+- A soft-deleted customer's orders stay listed and filterable.
+- GET /admin/orders/{order_number} (built 2026-10-03): any order by
+  number, in any status (also a pending or failed checkout a customer asks
+  about); unknown numbers are 404. It returns the customer view
+  (snapshots, fare_breakup, shipping_address, tracking, items) plus:
+  - `payment_status`;
+  - `review_reason`;
+  - `customer.reference_id`;
+  - `payments`: every attempt, oldest first, with `transaction_id`
+    (pay_…), `payment_link_id` (plink_…), `failed_at` and
+    `failure_reason`. `gateway_response` is never returned.
+- Tracking (PATCH /admin/orders/{order_number}/tracking) is not built
+  yet.
 
 ### BE-ORDER-03: Tracking only
 
@@ -893,8 +926,8 @@ Image upload/remove/reorder endpoints for variants.
 GET   /admin/customers
 GET   /admin/customers/{id}
 GET   /admin/customers/{id}/orders
-GET   /admin/orders
-GET   /admin/orders/{order_number}
+GET   /admin/orders                  (built)
+GET   /admin/orders/{order_number}   (built)
 PATCH /admin/orders/{order_number}/tracking
 
 Provider (routes/api.php, no session):

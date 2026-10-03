@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Data\CheckoutReview;
+use App\Support\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -28,6 +29,8 @@ class CheckoutReviewResource extends JsonResource
              * (backend SRS, section 9).
              */
             'fare_breakup' => [
+                /** The amounts' currency (the shop currency) and its display symbol. */
+                ...Currency::fields(),
                 'mrp_total' => $cart->mrpTotal(),
                 'discount' => $cart->discount(),
                 'subtotal' => $cart->subtotal(),

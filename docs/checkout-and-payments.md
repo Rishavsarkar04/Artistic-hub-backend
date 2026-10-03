@@ -309,7 +309,29 @@ Frontend:
 ## 6. Amounts
 
 All money is `decimal(10,2)` in the database and strings like `"899.50"`
-in PHP and JSON. All arithmetic uses `App\Support\Money` (bcmath), never
+in PHP and JSON.
+
+The currency is decided 2026-10-03:
+- **Shop currency:** one setting, `config('app.currency')` (`INR`). It is
+  not set in `.env`. Product prices are always in it, so products have no
+  currency column.
+- **`orders.currency`:** copied at checkout. It covers every amount on the
+  order and its items, so an old order still says what it was charged in
+  if the setting ever changes.
+- **`payments.currency`:** copied from the order. It is what Razorpay
+  charged.
+- **In the API:** `fare_breakup.currency` in the order details, and
+  `currency` on each row of the order lists.
+- **`currency` and `currency_symbol` in every response with prices:**
+  shop listing and variant details, cart items and `fare_breakup`,
+  checkout review, checkout, order lists and details, payments, and the
+  admin product variants. `App\Support\Currency::fields()` returns both:
+  - catalog and cart use the shop currency;
+  - orders and payments use their own stored code.
+- **The symbol (`₹`) is derived** by `Currency::symbol()` and never
+  stored, because a symbol is ambiguous (`$`) and Razorpay needs the code.
+  An unknown code shows as the code itself; add new currencies to that
+  map. The confirmation email uses it too. All arithmetic uses `App\Support\Money` (bcmath), never
 floats, so `0.1 + 0.2` is exactly `0.30`.
 
 ### 6.1 Order line (`order_items`)
@@ -532,8 +554,12 @@ Built 2026-10-03.
   orders yet. They are still reachable by number with
   `GET /customer/orders/{order_number}` (the result page).
 - **Still listed:** an order cancelled after it was placed.
+- **Status filter:** `?status=` is one of `confirmed`, `processing`,
+  `completed` or `cancelled` (`pending` is rejected, because pending
+  checkouts are never listed). Leave it out for all.
 - **Pagination:** `?page=` and `?per_page=` (default 10, max 50), with the
-  usual `data`, `links` and `meta`. No filters for now.
+  usual `data`, `links` and `meta`, plus `filters` (as applied) and
+  `filter_options` (the status values), like the other lists.
 
 Each row is a summary for an order card:
 
@@ -800,8 +826,13 @@ The cart at payment time is 3 × Amber + 1 Lavender; the order was for
 
 ## 12. Not built yet
 
-- **Admin order management:** list and detail, processing and completed
-  status changes, tracking, and showing `review_reason`.
+- **Admin order management:**
+  - Built: the list (`GET /admin/orders`: placed orders only,
+    `needs_review` per row) and the details (`GET /admin/orders/{order_number}`:
+    any status, with `review_reason` and every payment attempt); see
+    backend SRS BE-ORDER-02.
+  - Not built yet: processing and completed status changes, and
+    tracking.
 - **Refunds:** done by hand in the Razorpay dashboard for now.
 - **Expired pending orders:** when Razorpay sends `payment_link.expired`
   they are cancelled. If that event is missed, the order stays `pending`

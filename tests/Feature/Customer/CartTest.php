@@ -56,7 +56,7 @@ class CartTest extends TestCase
                 'item_count' => 0,
                 'subtotal' => '0.00',
                 'has_issues' => false,
-                'fare_breakup' => ['mrp_total' => '0.00', 'discount' => '0.00', 'subtotal' => '0.00'],
+                'fare_breakup' => ['currency' => 'INR', 'currency_symbol' => '₹', 'mrp_total' => '0.00', 'discount' => '0.00', 'subtotal' => '0.00'],
             ]]);
     }
 
@@ -75,12 +75,13 @@ class CartTest extends TestCase
             ->assertJsonPath('data.items.0.product_variant.reference_id', $variant->reference_id)
             ->assertJsonPath('data.items.0.product_variant.product.name', 'Amber & Sandalwood')
             ->assertJsonPath('data.items.0.product_variant.selling_price', '899.50')
+            ->assertJsonPath('data.items.0.product_variant.currency_symbol', '₹')
             ->assertJsonPath('data.items.0.product_variant.stock', 5)
             ->assertJsonPath('data.items.0.product_variant.cover_url', $cover->url())
             ->assertJsonPath('data.item_count', 2)
             ->assertJsonPath('data.subtotal', '1799.00')
             ->assertJsonPath('data.has_issues', false)
-            ->assertJsonPath('data.fare_breakup', ['mrp_total' => '2398.00', 'discount' => '599.00', 'subtotal' => '1799.00']);
+            ->assertJsonPath('data.fare_breakup', ['currency' => 'INR', 'currency_symbol' => '₹', 'mrp_total' => '2398.00', 'discount' => '599.00', 'subtotal' => '1799.00']);
     }
 
     public function test_quantity_defaults_to_one_and_adding_again_increases_it(): void
@@ -169,7 +170,7 @@ class CartTest extends TestCase
             ->assertJsonPath('data.items.2.issue', 'out_of_stock')
             ->assertJsonPath('data.items.3.issue', 'not_enough_stock')
             ->assertJsonPath('data.subtotal', '100.00')
-            ->assertJsonPath('data.fare_breakup', ['mrp_total' => '100.00', 'discount' => '0.00', 'subtotal' => '100.00'])
+            ->assertJsonPath('data.fare_breakup', ['currency' => 'INR', 'currency_symbol' => '₹', 'mrp_total' => '100.00', 'discount' => '0.00', 'subtotal' => '100.00'])
             ->assertJsonPath('data.has_issues', true);
 
         // Lowering always works and clears the issue; raising an unavailable item does not.
