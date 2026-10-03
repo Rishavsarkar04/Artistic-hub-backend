@@ -13,7 +13,7 @@ Source of truth for the Artistic Hub database schema. Migrations in `database/mi
 - `users` and `customer_profiles` use soft deletes (`deleted_at`). Soft-deleting a user also soft-deletes their profile, and restoring the user restores it (`User::booted()`). A soft-deleted user is hidden from normal queries, so they cannot sign in; their email stays reserved by the unique index (it cannot be registered again); their role and addresses are kept (addresses are only reached through the profile, so they are hidden with it). Records that must keep pointing at the profile, such as orders, load it with `withTrashed()`. Only a force delete removes the rows, and that cascades to the profile and addresses. There is no user-deletion feature in the API yet.
 - `orders` and `order_items` store **snapshots** of customer, address, product, and price data from the time of the order. Never read these values back from the live product or profile tables.
 - `order_items.product_variant_id` is nullable, so order history survives when a variant is deleted.
-- `orders.tracking_number` is required before an order moves to `completed`.
+- `orders.tracking_number` is required before an order moves to `completed`. Tracking (decided 2026-10-03) is set only through `PATCH /admin/orders/{order_number}/tracking`. `tracking_provider` and `tracking_number` (text, up to 100 characters) are saved together, with `tracking_updated_at` and `tracking_updated_by` (the admin; null if that user is later force-deleted) as the audit of the current values. Earlier values are not kept; a full history table is still open. Saving tracking sets `status = completed` (fulfilled: handed to the courier, not delivered), and `completed_at` the first time.
 - Each customer has at most one cart (`carts.customer_profile_id` is unique), and a variant appears once per cart (`cart_items` is unique on `cart_id` + `product_variant_id`); adding it again increases `quantity`. Cart items store **no prices**: checkout reads the current price, stock and active state and asks the customer to reconfirm if anything changed. Paying clears only the quantities that were paid for. Deleting a variant deletes its cart items (cascade); order items keep their snapshot with `product_variant_id` set to null.
 - Catalog columns as built: `product_variants.original_price` / `selling_price` are `decimal(10,2)` with `selling_price <= original_price` (checked by the app); `stock` is unsigned; `sku` is up to 64 characters; tag `name` is up to 100 characters. Deleting a product deletes its variants and tag links (cascade); its variants' photos are detached (see `media`). Deleting a tag deletes only its links.
 - `media` (decided 2026-10-03) holds every uploaded file: variant photos (`collection = variant_photo`) and customer avatars (`collection = avatar`). It is polymorphic: `mediable_type` + `mediable_id` point at the owner (`App\Models\ProductVariant`, `App\Models\CustomerProfile`). An upload creates a row with no owner; saving the owner attaches it. Rows still unattached after 24 hours are pruned with their files (`php artisan model:prune`, scheduled daily). `path` is unique; `disk` records where the file is; `sort_order` 0 is a variant's cover. A polymorphic relation has no database foreign key, so the app does what `nullOnDelete` would: when a variant is deleted (directly, left out of a product save, or with its product) its photos get `mediable_type` / `mediable_id` set to null, and the daily prune then deletes those rows and their files.
@@ -188,7 +188,9 @@ erDiagram
         string postal_code "shipping snapshot"
         string country "shipping snapshot"
         string tracking_provider "nullable; e.g. Delhivery"
-        string tracking_number "nullable; required when completed"
+        string tracking_number "nullable; text (leading zeros); required when completed"
+        timestamp tracking_updated_at "nullable; when tracking was last saved"
+        bigint tracking_updated_by FK "users.id; nullable; admin who saved it"
         text notes
         string cancellation_reason "nullable"
         text review_reason "nullable; admin-only, e.g. paid when stock was short"
@@ -248,6 +250,7 @@ erDiagram
     PRODUCT_VARIANTS ||--o{ MEDIA : "photos (polymorphic)"
     CUSTOMER_PROFILES ||--o| MEDIA : "avatar (polymorphic)"
     USERS ||--o{ MEDIA : uploaded
+    USERS |o--o{ ORDERS : "updated tracking"
     PRODUCT_VARIANTS ||--o{ PRODUCT_VARIANT_TAGS : tagged
     TAGS ||--o{ PRODUCT_VARIANT_TAGS : attached
 

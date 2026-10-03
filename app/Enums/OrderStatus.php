@@ -2,13 +2,19 @@
 
 namespace App\Enums;
 
-/** orders.status. Automated so far: pending → confirmed (verified payment) and pending → cancelled. */
+/**
+ * orders.status. So far: pending → confirmed (verified payment), pending → cancelled (link expired, cancelled or
+ * replaced, or the payment could not start), confirmed → completed (admin saves tracking).
+ */
 enum OrderStatus: string
 {
     /** Checkout started, payment not confirmed: not a placed order. */
     case Pending = 'pending';
+    /** Paid (verified by the Razorpay webhook). */
     case Confirmed = 'confirmed';
+    /** Not used yet. */
     case Processing = 'processing';
+    /** Fulfilled: an admin added tracking (handed to the courier). Not "delivered": there is no delivery tracking. */
     case Completed = 'completed';
     case Cancelled = 'cancelled';
 

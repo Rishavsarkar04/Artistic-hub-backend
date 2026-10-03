@@ -62,6 +62,7 @@ final class AdminOrderQuery
             ->with([
                 'items',
                 'payments',
+                'trackingUpdatedBy',
                 'latestPayment',
                 'customerProfile' => fn ($profile) => $profile->withTrashed()->with(['user' => fn ($user) => $user->withTrashed()]),
             ])

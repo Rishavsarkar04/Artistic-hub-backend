@@ -302,8 +302,8 @@ Frontend:
 |---|---|
 | `pending` | Created at Pay; waiting for the payment |
 | `confirmed` | Payment confirmed (webhook) |
-| `processing` | Being prepared (admin) |
-| `completed` | Delivered; `tracking_number` required |
+| `processing` | Not used yet |
+| `completed` | Fulfilled: an admin saved tracking (handed to the courier), and `completed_at` is set. Not "delivered": there is no delivery tracking |
 | `cancelled` | The payment could not be started, the link expired or was cancelled unpaid, or it was replaced by a newer checkout (`cancellation_reason` says which) |
 
 ## 6. Amounts
@@ -831,8 +831,9 @@ The cart at payment time is 3 × Amber + 1 Lavender; the order was for
     `needs_review` per row) and the details (`GET /admin/orders/{order_number}`:
     any status, with `review_reason`, the current `payment` and `payment_history`); see
     backend SRS BE-ORDER-02.
-  - Not built yet: processing and completed status changes, and
-    tracking.
+  - Built: tracking (`PATCH /admin/orders/{order_number}/tracking`),
+    which also completes the order.
+  - Not built yet: a `delivered` status (needs delivery tracking).
 - **Refunds:** done by hand in the Razorpay dashboard for now.
 - **Expired pending orders:** when Razorpay sends `payment_link.expired`
   they are cancelled. If that event is missed, the order stays `pending`

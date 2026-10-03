@@ -21,10 +21,13 @@ class OrderTest extends TestCase
 
     private const ORDERS = '/api/v1/admin/orders';
 
+    private User $admin;
+
     protected function setUp(): void
     {
         parent::setUp();
-        Passport::actingAs(User::factory()->admin()->create(), [Role::Admin->scope()]);
+        $this->admin = User::factory()->admin()->create(['name' => 'Meera Admin']);
+        Passport::actingAs($this->admin, [Role::Admin->scope()]);
     }
 
     /** An order as the checkout and webhook leave it; placed (confirmed and paid) unless told otherwise. */
@@ -230,6 +233,78 @@ class OrderTest extends TestCase
         $this->getJson(self::ORDERS.'/not-an-order')->assertNotFound();
     }
 
+    public function test_saving_tracking_records_who_and_when_and_completes_the_order(): void
+    {
+        $customer = User::factory()->customerWithProfile()->create();
+        $order = $this->order($customer);
+        $this->freezeSecond();
+
+        $this->patchJson(self::ORDERS."/{$order->order_number}/tracking", ['tracking_provider' => ' Delhivery ', 'tracking_number' => '0042981277'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'completed')
+            ->assertJsonPath('data.completed_at', now()->toIso8601String())
+            ->assertJsonPath('data.tracking', [
+                'provider' => 'Delhivery',
+                'number' => '0042981277',
+                'updated_at' => now()->toIso8601String(),
+                'updated_by' => ['reference_id' => $this->admin->reference_id, 'name' => 'Meera Admin'],
+            ]);
+
+        // A correction replaces the values; the order stays completed from the first save.
+        $completedAt = now()->toIso8601String();
+        $this->travel(1)->day();
+        $this->patchJson(self::ORDERS."/{$order->order_number}/tracking", ['tracking_provider' => 'Blue Dart', 'tracking_number' => 'BD123'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'completed')
+            ->assertJsonPath('data.completed_at', $completedAt)
+            ->assertJsonPath('data.tracking.provider', 'Blue Dart')
+            ->assertJsonPath('data.tracking.number', 'BD123');
+
+        // The customer sees it on their next fetch.
+        Passport::actingAs($customer, [Role::Customer->scope()]);
+        $this->getJson("/api/v1/customer/orders/{$order->order_number}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'completed')
+            ->assertJsonPath('data.tracking', ['provider' => 'Blue Dart', 'number' => 'BD123']);
+    }
+
+    public function test_tracking_needs_both_fields_as_text_and_nothing_else(): void
+    {
+        $order = $this->order(User::factory()->customerWithProfile()->create());
+        $url = self::ORDERS."/{$order->order_number}/tracking";
+
+        $this->patchJson($url, ['tracking_provider' => 'Delhivery'])->assertUnprocessable()->assertJsonValidationErrors('tracking_number');
+        $this->patchJson($url, ['tracking_number' => '123'])->assertUnprocessable()->assertJsonValidationErrors('tracking_provider');
+        // A JSON number would lose leading zeros: it must be a string.
+        $this->patchJson($url, ['tracking_provider' => 'Delhivery', 'tracking_number' => 42981277])->assertUnprocessable()->assertJsonValidationErrors('tracking_number');
+        $this->patchJson($url, ['tracking_provider' => 'Delhivery', 'tracking_number' => str_repeat('9', 101)])->assertUnprocessable()->assertJsonValidationErrors('tracking_number');
+        $this->patchJson($url, ['tracking_provider' => 'Delhivery', 'tracking_number' => '123', 'status' => 'completed', 'total_amount' => '1.00'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['status' => 'Only the tracking provider and tracking number can be changed.', 'total_amount']);
+
+        $order->refresh();
+        $this->assertNull($order->tracking_number);
+        $this->assertSame(OrderStatus::Confirmed, $order->status);
+    }
+
+    public function test_tracking_needs_a_placed_order_that_is_not_cancelled(): void
+    {
+        $customer = User::factory()->customerWithProfile()->create();
+        $body = ['tracking_provider' => 'Delhivery', 'tracking_number' => '123'];
+
+        foreach ([
+            $this->order($customer, ['status' => OrderStatus::Pending]),
+            $this->order($customer, ['status' => OrderStatus::Cancelled, 'placed_at' => null]),
+            $this->order($customer, ['status' => OrderStatus::Cancelled]),
+        ] as $order) {
+            $this->patchJson(self::ORDERS."/{$order->order_number}/tracking", $body)
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors(['order' => 'Tracking can only be added to a placed order that is not cancelled.']);
+        }
+
+        $this->patchJson(self::ORDERS.'/ORD-20261003-ZZZZZZ/tracking', $body)->assertNotFound();
+    }
+
     public function test_only_admins_can_see_orders(): void
     {
         $order = $this->order(User::factory()->customerWithProfile()->create());
@@ -237,6 +312,7 @@ class OrderTest extends TestCase
         Passport::actingAs(User::factory()->customerWithProfile()->create(), [Role::Customer->scope()]);
         $this->getJson(self::ORDERS)->assertForbidden();
         $this->getJson(self::ORDERS."/{$order->order_number}")->assertForbidden();
+        $this->patchJson(self::ORDERS."/{$order->order_number}/tracking", ['tracking_provider' => 'X', 'tracking_number' => '1'])->assertForbidden();
 
         $this->app['auth']->forgetGuards();
         $this->getJson(self::ORDERS)->assertUnauthorized();

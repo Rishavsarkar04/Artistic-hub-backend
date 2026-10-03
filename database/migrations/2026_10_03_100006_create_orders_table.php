@@ -41,7 +41,11 @@ return new class extends Migration
             $table->string('country', 100);
 
             $table->string('tracking_provider', 100)->nullable();
-            $table->string('tracking_number')->nullable();
+            // Text, so leading zeros survive. Set together with the provider by an admin (BE-ORDER-03).
+            $table->string('tracking_number', 100)->nullable();
+            // Who saved the current tracking values and when (audit; earlier values are not kept).
+            $table->timestamp('tracking_updated_at')->nullable();
+            $table->foreignId('tracking_updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('notes')->nullable();
             $table->string('cancellation_reason')->nullable();
             // Why an admin should look at this order, e.g. it was paid when stock was short (no

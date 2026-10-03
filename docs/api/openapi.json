@@ -1577,6 +1577,65 @@
                 }
             }
         },
+        "/admin/orders/{order}/tracking": {
+            "patch": {
+                "operationId": "admin.v1.orders.tracking.update",
+                "description": "Sets or corrects the tracking provider and number of a placed order: both are required, the number is kept\nas text, and any other field in the body is rejected (422). The order becomes `completed` (fulfilled: handed\nto the courier); `completed_at` is set the first time and kept on corrections. Pending, failed or cancelled\norders return 422 on `order`. Returns the order; customers see the tracking on their next fetch.",
+                "summary": "Save tracking details",
+                "tags": [
+                    "OrderTracking"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateOrderTrackingRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`AdminOrderResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/AdminOrderResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/auth/password": {
             "put": {
                 "operationId": "customer.v1.auth.password",
@@ -3649,6 +3708,13 @@
                         ],
                         "description": "When the customer pressed Pay."
                     },
+                    "completed_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "When tracking was first added (the order was handed to the courier); null until then."
+                    },
                     "cancelled_at": {
                         "type": [
                             "string",
@@ -3766,11 +3832,41 @@
                             },
                             "number": {
                                 "type": "string"
+                            },
+                            "updated_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "When the current values were saved, and by which admin; null until tracking is added."
+                            },
+                            "updated_by": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "properties": {
+                                    "reference_id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "reference_id",
+                                    "name"
+                                ]
                             }
                         },
                         "required": [
                             "provider",
-                            "number"
+                            "number",
+                            "updated_at",
+                            "updated_by"
                         ]
                     },
                     "items": {
@@ -3805,6 +3901,7 @@
                     "payment_status",
                     "placed_at",
                     "created_at",
+                    "completed_at",
                     "cancelled_at",
                     "cancellation_reason",
                     "review_reason",
@@ -4634,6 +4731,13 @@
                             "null"
                         ]
                     },
+                    "completed_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "When tracking was first added (the order was handed to the courier); null until then."
+                    },
                     "cancelled_at": {
                         "type": [
                             "string",
@@ -4825,6 +4929,7 @@
                     "status",
                     "placed_at",
                     "created_at",
+                    "completed_at",
                     "cancelled_at",
                     "cancellation_reason",
                     "payment",
@@ -5876,6 +5981,26 @@
                     "quantity"
                 ],
                 "title": "UpdateCartItemRequest"
+            },
+            "UpdateOrderTrackingRequest": {
+                "type": "object",
+                "properties": {
+                    "tracking_provider": {
+                        "type": "string",
+                        "description": "Courier name as plain text, e.g. Delhivery.",
+                        "maxLength": 100
+                    },
+                    "tracking_number": {
+                        "type": "string",
+                        "description": "Sent as a string so leading zeros are kept, e.g. \"0042981277\".",
+                        "maxLength": 100
+                    }
+                },
+                "required": [
+                    "tracking_provider",
+                    "tracking_number"
+                ],
+                "title": "UpdateOrderTrackingRequest"
             },
             "UpdateProfileRequest": {
                 "type": "object",

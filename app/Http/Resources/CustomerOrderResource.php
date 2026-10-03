@@ -29,6 +29,8 @@ class CustomerOrderResource extends JsonResource
             /** Null while pending: the order date, set when the payment is confirmed. */
             'placed_at' => $order->placed_at?->toIso8601String(),
             'created_at' => $order->created_at?->toIso8601String(),
+            /** When tracking was first added (the order was handed to the courier); null until then. */
+            'completed_at' => $order->completed_at?->toIso8601String(),
             'cancelled_at' => $order->cancelled_at?->toIso8601String(),
             'cancellation_reason' => $order->cancellation_reason,
             'payment' => $payment === null ? null : [

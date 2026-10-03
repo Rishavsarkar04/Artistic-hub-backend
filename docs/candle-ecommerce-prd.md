@@ -245,6 +245,8 @@ Shipping charges, taxes, currency, and supported shipping regions must be decide
 
 Do not add manual shipped/delivered/cancelled status controls. Tracking data alone is not proof that a carrier has delivered a parcel.
 
+Decided 2026-10-03: saving tracking marks the order `completed`, meaning fulfilled by the shop (handed to the courier), not delivered. There is no delivery tracking, so a `shipped` status would have no way to reach completion. If delivery tracking is added later, it gets its own `delivered` status after `completed`.
+
 ## 7. Orders and tracking
 
 ### ORDER-01: Customer history

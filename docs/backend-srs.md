@@ -873,8 +873,8 @@ Implemented 2026-10-03 (admin order list):
   - `payment_history`: the earlier attempts only, newest first, with `transaction_id`
     (pay_…), `payment_link_id` (plink_…), `failed_at` and
     `failure_reason`. `gateway_response` is never returned.
-- Tracking (PATCH /admin/orders/{order_number}/tracking) is not built
-  yet.
+- Tracking: PATCH /admin/orders/{order_number}/tracking is built (see
+  BE-ORDER-03).
 
 ### BE-ORDER-03: Tracking only
 
@@ -891,12 +891,34 @@ Customer history/details must show updated tracking on the next fetch.
 The schema says tracking_number is required before completed.
 Enforce that invariant for any future transition.
 
-However, saving tracking must not automatically mean completed:
-the user has not defined completion semantics or authorized a manual
-status editor.
+Decided 2026-10-03: saving tracking completes the order. `completed`
+means fulfilled by the shop (handed to the courier, tracking added), not
+delivered. There is no delivery tracking, so a separate `shipped` status
+would have no way to reach completion. A `delivered` status may be added
+after `completed` if delivery tracking comes later. There is still no
+manual status editor, and no other automatic transitions (`processing` is
+unused).
 
-Do not implement automatic processing/completed/cancelled transitions
-until their triggers are specified.
+Built 2026-10-03: `PATCH /admin/orders/{order_number}/tracking`.
+- **Body:** `{ tracking_provider, tracking_number }`. Both are required,
+  strings (trimmed) of at most 100 characters. A JSON number for
+  `tracking_number` is rejected, so leading zeros cannot be lost.
+- **Any other field** in the body is a 422 on that field ("Only the
+  tracking provider and tracking number can be changed.").
+- **Allowed orders:** placed orders (`placed_at` set) that are not
+  cancelled. Otherwise 422 on `order`; an unknown number is 404.
+- **Saved with:** `tracking_updated_at` and `tracking_updated_by` (the
+  admin). A correction overwrites the values; earlier values are not
+  kept.
+- **Status:** becomes `completed`. `completed_at` is set the first time
+  tracking is saved and kept on corrections. A completed order can still
+  have its tracking corrected.
+- **Response:** the admin order (`AdminOrderResource`), whose `tracking`
+  now includes `updated_at` and `updated_by` { reference_id, name }.
+  Customers see `tracking.provider` and `tracking.number` on their next
+  fetch.
+- **Code:** `OrderTrackingService`, `UpdateOrderTrackingRequest`,
+  `Admin\OrderTrackingController`.
 
 ## 13. Email
 
@@ -973,7 +995,7 @@ GET   /admin/customers/{id}
 GET   /admin/customers/{id}/orders
 GET   /admin/orders                  (built)
 GET   /admin/orders/{order_number}   (built)
-PATCH /admin/orders/{order_number}/tracking
+PATCH /admin/orders/{order_number}/tracking   (built)
 
 Provider (routes/api.php, no session):
 POST /webhooks/razorpay

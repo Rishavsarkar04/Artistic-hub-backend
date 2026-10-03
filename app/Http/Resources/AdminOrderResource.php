@@ -33,6 +33,8 @@ class AdminOrderResource extends JsonResource
             'placed_at' => $order->placed_at?->toIso8601String(),
             /** When the customer pressed Pay. */
             'created_at' => $order->created_at?->toIso8601String(),
+            /** When tracking was first added (the order was handed to the courier); null until then. */
+            'completed_at' => $order->completed_at?->toIso8601String(),
             'cancelled_at' => $order->cancelled_at?->toIso8601String(),
             'cancellation_reason' => $order->cancellation_reason,
             /** Why this order needs an admin's attention (e.g. paid when stock was short); null when nothing to check. */
@@ -67,6 +69,12 @@ class AdminOrderResource extends JsonResource
             'tracking' => [
                 'provider' => $order->tracking_provider,
                 'number' => $order->tracking_number,
+                /** When the current values were saved, and by which admin; null until tracking is added. */
+                'updated_at' => $order->tracking_updated_at?->toIso8601String(),
+                'updated_by' => $order->trackingUpdatedBy === null ? null : [
+                    'reference_id' => $order->trackingUpdatedBy->reference_id,
+                    'name' => $order->trackingUpdatedBy->name,
+                ],
             ],
             'items' => OrderItemResource::collection($order->items),
             /** The current (newest) payment attempt: show this one. Its status is payment_status. Null only if none. */

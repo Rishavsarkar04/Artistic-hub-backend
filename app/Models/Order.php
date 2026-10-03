@@ -26,6 +26,7 @@ class Order extends Model
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'placed_at' => 'datetime',
+            'tracking_updated_at' => 'datetime',
         ];
     }
 
@@ -38,6 +39,12 @@ class Order extends Model
     public function customerProfile(): BelongsTo
     {
         return $this->belongsTo(CustomerProfile::class);
+    }
+
+    /** @return BelongsTo<User, $this> The admin who saved the current tracking values. */
+    public function trackingUpdatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'tracking_updated_by')->withTrashed();
     }
 
     /** @return HasMany<OrderItem, $this> */
