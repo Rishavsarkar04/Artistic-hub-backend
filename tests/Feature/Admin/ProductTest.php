@@ -51,7 +51,11 @@ class ProductTest extends TestCase
         return strtolower((string) Str::ulid());
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * A valid variant; it gets one freshly uploaded photo unless photo_ids is given.
+     *
+     * @return array<string, mixed>
+     */
     private function variant(array $overrides = []): array
     {
         static $counter = 0;
@@ -65,7 +69,7 @@ class ProductTest extends TestCase
             'stock' => 12,
             'is_active' => true,
             'tag_ids' => [],
-            'photo_ids' => [],
+            'photo_ids' => array_key_exists('photo_ids', $overrides) ? [] : [$this->uploadPhoto()],
             ...$overrides,
         ];
     }
@@ -79,6 +83,19 @@ class ProductTest extends TestCase
     private function createProduct(array $variants, array $overrides = []): array
     {
         return $this->postJson('/api/v1/admin/products', $this->product($variants, $overrides))->assertCreated()->json('data');
+    }
+
+    public function test_every_variant_needs_at_least_one_photo(): void
+    {
+        $missing = $this->variant();
+        unset($missing['photo_ids']);
+
+        $this->postJson('/api/v1/admin/products', $this->product([$this->variant(['photo_ids' => []]), $missing]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'variants.0.photo_ids' => 'Add at least one photo of this variant.',
+                'variants.1.photo_ids' => 'Add at least one photo of this variant.',
+            ]);
     }
 
     public function test_an_admin_creates_a_product_with_variants_tags_and_photos(): void

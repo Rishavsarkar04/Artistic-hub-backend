@@ -50,7 +50,7 @@ class ProductVariantListingTest extends TestCase
         $product = Product::factory()->create(['name' => 'Amber & Sandalwood']);
         $variant = $this->variant(['name' => 'Small', 'original_price' => '1199.00', 'selling_price' => '899.00'], $product);
         $cover = Media::factory()->attachedTo($variant, 0)->create();
-        Media::factory()->attachedTo($variant, 1)->create();
+        $hover = Media::factory()->attachedTo($variant, 1)->create();
         $variant->tags()->attach(Tag::factory()->create(['name' => 'Woody', 'slug' => 'woody']));
 
         $this->getJson(self::URL)
@@ -60,8 +60,20 @@ class ProductVariantListingTest extends TestCase
             ->assertJsonPath('data.0.original_price', '1199.00')
             ->assertJsonPath('data.0.selling_price', '899.00')
             ->assertJsonPath('data.0.cover_url', $cover->url())
+            ->assertJsonPath('data.0.hover_url', $hover->url())
             ->assertJsonPath('data.0.tags.0.slug', 'woody')
             ->assertJsonPath('meta.total', 1);
+    }
+
+    public function test_hover_url_is_null_with_a_single_photo(): void
+    {
+        $variant = $this->variant();
+        $cover = Media::factory()->attachedTo($variant, 0)->create();
+
+        $this->getJson(self::URL)
+            ->assertOk()
+            ->assertJsonPath('data.0.cover_url', $cover->url())
+            ->assertJsonPath('data.0.hover_url', null);
     }
 
     public function test_search_matches_names_descriptions_and_tags(): void

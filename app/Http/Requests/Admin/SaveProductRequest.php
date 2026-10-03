@@ -52,8 +52,8 @@ class SaveProductRequest extends FormRequest
             'variants.*.is_active' => ['required', 'boolean'],
             'variants.*.tag_ids' => ['nullable', 'array'],
             'variants.*.tag_ids.*' => ['string', 'ulid', 'distinct', Rule::exists('tags', 'reference_id')],
-            /** Up to 8 media ids per variant (from POST /admin/uploads/variant-photos), in display order; the first is the cover. */
-            'variants.*.photo_ids' => ['nullable', 'array', 'max:8'],
+            /** 1 to 8 media ids per variant (from POST /admin/uploads/variant-photos), in display order; the first is the cover, the second the hover image. */
+            'variants.*.photo_ids' => ['required', 'array', 'min:1', 'max:8'],
             'variants.*.photo_ids.*' => [
                 'string',
                 'ulid',
@@ -87,6 +87,8 @@ class SaveProductRequest extends FormRequest
     {
         return [
             'variants.*.name.distinct' => 'Two variants of this product have the same name.',
+            'variants.*.photo_ids.required' => 'Add at least one photo of this variant.',
+            'variants.*.photo_ids.min' => 'Add at least one photo of this variant.',
             'variants.*.photo_ids.*.exists' => 'This photo was not found. Upload it again.',
         ];
     }
@@ -113,7 +115,7 @@ class SaveProductRequest extends FormRequest
                 stock: (int) $variant['stock'],
                 isActive: (bool) $variant['is_active'],
                 tagIds: array_map(fn (string $referenceId) => $tagIds[$referenceId], $variant['tag_ids'] ?? []),
-                photoIds: array_map(fn (string $referenceId) => $photoIds[$referenceId], array_values($variant['photo_ids'] ?? [])),
+                photoIds: array_map(fn (string $referenceId) => $photoIds[$referenceId], array_values($variant['photo_ids'])),
             ), $variants),
         );
     }

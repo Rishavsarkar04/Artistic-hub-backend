@@ -16,7 +16,7 @@ class ShopVariantCardResource extends JsonResource
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
-        $cover = $this->photos->first();
+        [$cover, $hover] = [$this->photos->get(0), $this->photos->get(1)];
 
         return [
             'id' => $this->id,
@@ -35,6 +35,8 @@ class ShopVariantCardResource extends JsonResource
             'selling_price' => $this->selling_price,
             /** The first photo, or null. */
             'cover_url' => $cover?->url(),
+            /** The second photo, shown on hover; null when there is only one photo (keep showing the cover). */
+            'hover_url' => $hover?->url(),
             'tags' => TagResource::collection($this->tags),
         ];
     }
