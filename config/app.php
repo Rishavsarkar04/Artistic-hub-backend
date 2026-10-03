@@ -57,7 +57,7 @@ return [
     /*
     | The storefront (React app). Used for links in emails, e.g. /account/orders/{order_number}.
     */
-    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:8443'),
 
     /*
     | The shop's currency (ISO 4217). Every product price is in it; checkout copies it onto each order,

@@ -166,7 +166,7 @@ them.
 RAZORPAY_KEY_ID=rzp_test_xxxxxxxx
 RAZORPAY_KEY_SECRET=xxxxxxxx
 RAZORPAY_WEBHOOK_SECRET=
-RAZORPAY_CALLBACK_URL=http://localhost:5173/checkout/result
+RAZORPAY_CALLBACK_URL=http://localhost:8443/checkout/result
 RAZORPAY_LINK_EXPIRY_MINUTES=30
 ```
 

@@ -45,7 +45,7 @@ return [
         'key_secret' => env('RAZORPAY_KEY_SECRET'),
         'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
         'base_url' => env('RAZORPAY_BASE_URL', 'https://api.razorpay.com/v1'),
-        'callback_url' => env('RAZORPAY_CALLBACK_URL', 'http://localhost:5173/checkout/result'),
+        'callback_url' => env('RAZORPAY_CALLBACK_URL', 'http://localhost:8443/checkout/result'),
         // How long a payment link stays payable (Razorpay needs at least 15 minutes).
         'link_expiry_minutes' => (int) env('RAZORPAY_LINK_EXPIRY_MINUTES', 30),
     ],
