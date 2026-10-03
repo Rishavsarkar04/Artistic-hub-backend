@@ -26,7 +26,7 @@ class CreateAdmin extends Command
             [
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-                'password' => ['required', 'confirmed', Password::min(12)->letters()->numbers()],
+                'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
             ],
         );
 
