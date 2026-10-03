@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\TrackingProvider;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class UpdateOrderTrackingRequest extends FormRequest
@@ -14,8 +16,8 @@ class UpdateOrderTrackingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            /** Courier name as plain text, e.g. Delhivery. */
-            'tracking_provider' => ['required', 'string', 'max:100'],
+            /** One of the couriers in `tracking_provider_options`, e.g. delhivery. */
+            'tracking_provider' => ['required', Rule::enum(TrackingProvider::class)],
             /** Sent as a string so leading zeros are kept, e.g. "0042981277". */
             'tracking_number' => ['required', 'string', 'max:100'],
         ];
@@ -31,5 +33,10 @@ class UpdateOrderTrackingRequest extends FormRequest
                 }
             },
         ];
+    }
+
+    public function provider(): TrackingProvider
+    {
+        return TrackingProvider::from($this->validated('tracking_provider'));
     }
 }

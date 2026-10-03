@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Data\OrderListFilters;
+use App\Enums\TrackingProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ListOrdersRequest;
 use App\Http\Resources\AdminOrderResource;
@@ -38,10 +39,11 @@ class OrderController extends Controller
      *
      * Any order by its order number, in any status (also a pending or failed checkout a customer asks about).
      * Everything the customer sees, plus `review_reason` (why it needs attention, e.g. paid when stock was short),
-     * the customer's `reference_id`, the current `payment` and the earlier attempts (`payment_history`) with their Razorpay ids. Unknown numbers return 404.
+     * `tracking_provider_options` (the courier dropdown), the customer's `reference_id`, the current `payment` and the earlier attempts (`payment_history`) with their Razorpay ids. Unknown numbers return 404.
      */
     public function show(string $order): AdminOrderResource
     {
-        return new AdminOrderResource($this->adminOrderQuery->find($order));
+        return (new AdminOrderResource($this->adminOrderQuery->find($order)))
+            ->additional(['tracking_provider_options' => TrackingProvider::options()]);
     }
 }

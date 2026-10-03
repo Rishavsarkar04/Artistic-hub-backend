@@ -3,6 +3,7 @@
 namespace App\Services\Orders;
 
 use App\Enums\OrderStatus;
+use App\Enums\TrackingProvider;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ final class OrderTrackingService
      *
      * @throws ValidationException `order` when the order was never placed (pending or failed checkout) or is cancelled
      */
-    public function updateTracking(Order $order, string $provider, string $number, User $admin): Order
+    public function updateTracking(Order $order, TrackingProvider $provider, string $number, User $admin): Order
     {
         DB::transaction(function () use ($order, $provider, $number, $admin) {
             $locked = Order::whereKey($order->id)->lockForUpdate()->first();

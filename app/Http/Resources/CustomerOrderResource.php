@@ -74,7 +74,10 @@ class CustomerOrderResource extends JsonResource
                 'country' => $order->country,
             ],
             'tracking' => [
+                /** The courier key (e.g. delhivery); null until tracking is added. */
                 'provider' => $order->tracking_provider,
+                /** The courier's display name, e.g. Blue Dart. */
+                'provider_name' => $order->tracking_provider?->label(),
                 'number' => $order->tracking_number,
             ],
             'items' => OrderItemResource::collection($order->items),

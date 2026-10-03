@@ -1534,7 +1534,7 @@
         "/admin/orders/{order}": {
             "get": {
                 "operationId": "admin.v1.orders.show",
-                "description": "Any order by its order number, in any status (also a pending or failed checkout a customer asks about).\nEverything the customer sees, plus `review_reason` (why it needs attention, e.g. paid when stock was short),\nthe customer's `reference_id`, the current `payment` and the earlier attempts (`payment_history`) with their Razorpay ids. Unknown numbers return 404.",
+                "description": "Any order by its order number, in any status (also a pending or failed checkout a customer asks about).\nEverything the customer sees, plus `review_reason` (why it needs attention, e.g. paid when stock was short),\n`tracking_provider_options` (the courier dropdown), the customer's `reference_id`, the current `payment` and the earlier attempts (`payment_history`) with their Razorpay ids. Unknown numbers return 404.",
                 "summary": "Show an order",
                 "tags": [
                     "Order"
@@ -1559,10 +1559,15 @@
                                     "properties": {
                                         "data": {
                                             "$ref": "#/components/schemas/AdminOrderResource"
+                                        },
+                                        "tracking_provider_options": {
+                                            "type": "array",
+                                            "items": {}
                                         }
                                     },
                                     "required": [
-                                        "data"
+                                        "data",
+                                        "tracking_provider_options"
                                     ]
                                 }
                             }
@@ -1580,7 +1585,7 @@
         "/admin/orders/{order}/tracking": {
             "patch": {
                 "operationId": "admin.v1.orders.tracking.update",
-                "description": "Sets or corrects the tracking provider and number of a placed order: both are required, the number is kept\nas text, and any other field in the body is rejected (422). The order becomes `completed` (fulfilled: handed\nto the courier); `completed_at` is set the first time and kept on corrections. Pending, failed or cancelled\norders return 422 on `order`. Returns the order; customers see the tracking on their next fetch.",
+                "description": "Sets or corrects the courier and tracking number of a placed order: `tracking_provider` is one of\n`tracking_provider_options`, the number is kept as text, and any other field in the body is rejected (422). The order becomes `completed` (fulfilled: handed\nto the courier); `completed_at` is set the first time and kept on corrections. Pending, failed or cancelled\norders return 422 on `order`. Returns the order; customers see the tracking on their next fetch.",
                 "summary": "Save tracking details",
                 "tags": [
                     "OrderTracking"
@@ -1615,10 +1620,15 @@
                                     "properties": {
                                         "data": {
                                             "$ref": "#/components/schemas/AdminOrderResource"
+                                        },
+                                        "tracking_provider_options": {
+                                            "type": "array",
+                                            "items": {}
                                         }
                                     },
                                     "required": [
-                                        "data"
+                                        "data",
+                                        "tracking_provider_options"
                                     ]
                                 }
                             }
@@ -3828,7 +3838,15 @@
                         "type": "object",
                         "properties": {
                             "provider": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "The courier key (e.g. delhivery); null until tracking is added."
+                            },
+                            "provider_name": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "The courier's display name, e.g. Blue Dart."
                             },
                             "number": {
                                 "type": "string"
@@ -3864,6 +3882,7 @@
                         },
                         "required": [
                             "provider",
+                            "provider_name",
                             "number",
                             "updated_at",
                             "updated_by"
@@ -4905,7 +4924,15 @@
                         "type": "object",
                         "properties": {
                             "provider": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "The courier key (e.g. delhivery); null until tracking is added."
+                            },
+                            "provider_name": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "The courier's display name, e.g. Blue Dart."
                             },
                             "number": {
                                 "type": "string"
@@ -4913,6 +4940,7 @@
                         },
                         "required": [
                             "provider",
+                            "provider_name",
                             "number"
                         ]
                     },
@@ -5885,6 +5913,21 @@
                 ],
                 "title": "TagResource"
             },
+            "TrackingProvider": {
+                "type": "string",
+                "description": "Couriers an admin can pick for an order's tracking (orders.tracking_provider). A fixed list: add a courier here (with its label) to offer it in the dropdown.\n",
+                "enum": [
+                    "delhivery",
+                    "bluedart",
+                    "dtdc",
+                    "india_post",
+                    "ekart",
+                    "xpressbees",
+                    "shadowfax",
+                    "ecom_express"
+                ],
+                "title": "TrackingProvider"
+            },
             "UpdateAddressRequest": {
                 "type": "object",
                 "description": "Same fields and rules as creating: the whole address is sent each time.",
@@ -5986,9 +6029,8 @@
                 "type": "object",
                 "properties": {
                     "tracking_provider": {
-                        "type": "string",
-                        "description": "Courier name as plain text, e.g. Delhivery.",
-                        "maxLength": 100
+                        "description": "One of the couriers in `tracking_provider_options`, e.g. delhivery.",
+                        "$ref": "#/components/schemas/TrackingProvider"
                     },
                     "tracking_number": {
                         "type": "string",

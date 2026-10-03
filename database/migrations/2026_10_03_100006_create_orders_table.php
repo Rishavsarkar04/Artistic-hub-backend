@@ -40,7 +40,8 @@ return new class extends Migration
             $table->string('postal_code', 20);
             $table->string('country', 100);
 
-            $table->string('tracking_provider', 100)->nullable();
+            // App\Enums\TrackingProvider (a fixed list of couriers).
+            $table->string('tracking_provider', 30)->nullable();
             // Text, so leading zeros survive. Set together with the provider by an admin (BE-ORDER-03).
             $table->string('tracking_number', 100)->nullable();
             // Who saved the current tracking values and when (audit; earlier values are not kept).

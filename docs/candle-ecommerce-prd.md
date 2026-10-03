@@ -267,7 +267,7 @@ Decided 2026-10-03: saving tracking marks the order `completed`, meaning fulfill
 
 - Admin enters a tracking provider and tracking number on an existing placed order.
 - Require both values together and validate reasonable lengths; preserve leading zeros in tracking numbers by storing them as text.
-- Proposed input: provider is plain text, because a maintained provider list was not requested.
+- Provider is picked from a fixed list of couriers (decided 2026-10-03): Delhivery, Blue Dart, DTDC, India Post, Ekart, Xpressbees, Shadowfax, Ecom Express. There is no free-text "Other"; a new courier is added to the list in the backend.
 - Admin can correct saved values.
 - Store the update time and admin identity for audit purposes.
 - After saving, the current values appear in the customer's order history/details on the next fetch or refresh; real-time push is not required.

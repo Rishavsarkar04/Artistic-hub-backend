@@ -219,7 +219,9 @@ class OrderTest extends TestCase
             ->assertJsonPath('data.payment_history.0.status', 'paid')
             ->assertJsonPath('data.payment_history.0.transaction_id', 'pay_X')
             ->assertJsonPath('data.payment_history.0.payment_link_id', 'plink_A')
-            ->assertJsonMissingPath('data.payment.gateway_response');
+            ->assertJsonMissingPath('data.payment.gateway_response')
+            ->assertJsonCount(8, 'tracking_provider_options')
+            ->assertJsonPath('tracking_provider_options.1', ['value' => 'bluedart', 'label' => 'Blue Dart']);
     }
 
     public function test_the_details_open_any_status_and_unknown_numbers_are_not_found(): void
@@ -239,12 +241,14 @@ class OrderTest extends TestCase
         $order = $this->order($customer);
         $this->freezeSecond();
 
-        $this->patchJson(self::ORDERS."/{$order->order_number}/tracking", ['tracking_provider' => ' Delhivery ', 'tracking_number' => '0042981277'])
+        $this->patchJson(self::ORDERS."/{$order->order_number}/tracking", ['tracking_provider' => 'delhivery', 'tracking_number' => ' 0042981277 '])
             ->assertOk()
             ->assertJsonPath('data.status', 'completed')
             ->assertJsonPath('data.completed_at', now()->toIso8601String())
+            ->assertJsonPath('tracking_provider_options.0', ['value' => 'delhivery', 'label' => 'Delhivery'])
             ->assertJsonPath('data.tracking', [
-                'provider' => 'Delhivery',
+                'provider' => 'delhivery',
+                'provider_name' => 'Delhivery',
                 'number' => '0042981277',
                 'updated_at' => now()->toIso8601String(),
                 'updated_by' => ['reference_id' => $this->admin->reference_id, 'name' => 'Meera Admin'],
@@ -253,11 +257,12 @@ class OrderTest extends TestCase
         // A correction replaces the values; the order stays completed from the first save.
         $completedAt = now()->toIso8601String();
         $this->travel(1)->day();
-        $this->patchJson(self::ORDERS."/{$order->order_number}/tracking", ['tracking_provider' => 'Blue Dart', 'tracking_number' => 'BD123'])
+        $this->patchJson(self::ORDERS."/{$order->order_number}/tracking", ['tracking_provider' => 'bluedart', 'tracking_number' => 'BD123'])
             ->assertOk()
             ->assertJsonPath('data.status', 'completed')
             ->assertJsonPath('data.completed_at', $completedAt)
-            ->assertJsonPath('data.tracking.provider', 'Blue Dart')
+            ->assertJsonPath('data.tracking.provider', 'bluedart')
+            ->assertJsonPath('data.tracking.provider_name', 'Blue Dart')
             ->assertJsonPath('data.tracking.number', 'BD123');
 
         // The customer sees it on their next fetch.
@@ -265,7 +270,7 @@ class OrderTest extends TestCase
         $this->getJson("/api/v1/customer/orders/{$order->order_number}")
             ->assertOk()
             ->assertJsonPath('data.status', 'completed')
-            ->assertJsonPath('data.tracking', ['provider' => 'Blue Dart', 'number' => 'BD123']);
+            ->assertJsonPath('data.tracking', ['provider' => 'bluedart', 'provider_name' => 'Blue Dart', 'number' => 'BD123']);
     }
 
     public function test_tracking_needs_both_fields_as_text_and_nothing_else(): void
@@ -273,12 +278,15 @@ class OrderTest extends TestCase
         $order = $this->order(User::factory()->customerWithProfile()->create());
         $url = self::ORDERS."/{$order->order_number}/tracking";
 
-        $this->patchJson($url, ['tracking_provider' => 'Delhivery'])->assertUnprocessable()->assertJsonValidationErrors('tracking_number');
+        $this->patchJson($url, ['tracking_provider' => 'delhivery'])->assertUnprocessable()->assertJsonValidationErrors('tracking_number');
         $this->patchJson($url, ['tracking_number' => '123'])->assertUnprocessable()->assertJsonValidationErrors('tracking_provider');
+        // Only couriers from the list; a typed name is not accepted.
+        $this->patchJson($url, ['tracking_provider' => 'Delhivery', 'tracking_number' => '123'])->assertUnprocessable()->assertJsonValidationErrors('tracking_provider');
+        $this->patchJson($url, ['tracking_provider' => 'other', 'tracking_number' => '123'])->assertUnprocessable()->assertJsonValidationErrors('tracking_provider');
         // A JSON number would lose leading zeros: it must be a string.
-        $this->patchJson($url, ['tracking_provider' => 'Delhivery', 'tracking_number' => 42981277])->assertUnprocessable()->assertJsonValidationErrors('tracking_number');
-        $this->patchJson($url, ['tracking_provider' => 'Delhivery', 'tracking_number' => str_repeat('9', 101)])->assertUnprocessable()->assertJsonValidationErrors('tracking_number');
-        $this->patchJson($url, ['tracking_provider' => 'Delhivery', 'tracking_number' => '123', 'status' => 'completed', 'total_amount' => '1.00'])
+        $this->patchJson($url, ['tracking_provider' => 'delhivery', 'tracking_number' => 42981277])->assertUnprocessable()->assertJsonValidationErrors('tracking_number');
+        $this->patchJson($url, ['tracking_provider' => 'delhivery', 'tracking_number' => str_repeat('9', 101)])->assertUnprocessable()->assertJsonValidationErrors('tracking_number');
+        $this->patchJson($url, ['tracking_provider' => 'delhivery', 'tracking_number' => '123', 'status' => 'completed', 'total_amount' => '1.00'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['status' => 'Only the tracking provider and tracking number can be changed.', 'total_amount']);
 
@@ -290,7 +298,7 @@ class OrderTest extends TestCase
     public function test_tracking_needs_a_placed_order_that_is_not_cancelled(): void
     {
         $customer = User::factory()->customerWithProfile()->create();
-        $body = ['tracking_provider' => 'Delhivery', 'tracking_number' => '123'];
+        $body = ['tracking_provider' => 'delhivery', 'tracking_number' => '123'];
 
         foreach ([
             $this->order($customer, ['status' => OrderStatus::Pending]),
@@ -312,7 +320,7 @@ class OrderTest extends TestCase
         Passport::actingAs(User::factory()->customerWithProfile()->create(), [Role::Customer->scope()]);
         $this->getJson(self::ORDERS)->assertForbidden();
         $this->getJson(self::ORDERS."/{$order->order_number}")->assertForbidden();
-        $this->patchJson(self::ORDERS."/{$order->order_number}/tracking", ['tracking_provider' => 'X', 'tracking_number' => '1'])->assertForbidden();
+        $this->patchJson(self::ORDERS."/{$order->order_number}/tracking", ['tracking_provider' => 'dtdc', 'tracking_number' => '1'])->assertForbidden();
 
         $this->app['auth']->forgetGuards();
         $this->getJson(self::ORDERS)->assertUnauthorized();

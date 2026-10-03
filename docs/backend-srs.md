@@ -900,8 +900,13 @@ manual status editor, and no other automatic transitions (`processing` is
 unused).
 
 Built 2026-10-03: `PATCH /admin/orders/{order_number}/tracking`.
-- **Body:** `{ tracking_provider, tracking_number }`. Both are required,
-  strings (trimmed) of at most 100 characters. A JSON number for
+- **Body:** `{ tracking_provider, tracking_number }`, both required.
+  - `tracking_provider` is a key from the fixed courier list
+    (`App\Enums\TrackingProvider`: delhivery, bluedart, dtdc, india_post,
+    ekart, xpressbees, shadowfax, ecom_express). There is no "other";
+    anything else is a 422.
+  - `tracking_number` is a trimmed string of at most 100 characters. A
+    JSON number for
   `tracking_number` is rejected, so leading zeros cannot be lost.
 - **Any other field** in the body is a 422 on that field ("Only the
   tracking provider and tracking number can be changed.").
@@ -913,8 +918,12 @@ Built 2026-10-03: `PATCH /admin/orders/{order_number}/tracking`.
 - **Status:** becomes `completed`. `completed_at` is set the first time
   tracking is saved and kept on corrections. A completed order can still
   have its tracking corrected.
-- **Response:** the admin order (`AdminOrderResource`), whose `tracking`
-  now includes `updated_at` and `updated_by` { reference_id, name }.
+- **Response:** the admin order (`AdminOrderResource`) plus
+  `tracking_provider_options` ([{ value, label }], also returned by
+  GET /admin/orders/{order_number} for the dropdown). Its `tracking` is
+  { provider (key), provider_name (label), number, updated_at,
+  updated_by { reference_id, name } }; customers get provider,
+  provider_name and number.
   Customers see `tracking.provider` and `tracking.number` on their next
   fetch.
 - **Code:** `OrderTrackingService`, `UpdateOrderTrackingRequest`,
