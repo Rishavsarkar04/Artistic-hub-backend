@@ -273,7 +273,8 @@ delete); photos are stored on the media disk (S3 in production).
   each JPG/PNG/WebP by content, up to 5 MB; all or nothing) → one `media`
   row per file, not yet attached, returned in order as
   `[{ id, url, mime_type, size, sort_order }]`; send the ids in
-  variants.*.photo_ids (up to 8, display order; the first is the cover).
+  variants.*.photo_ids (required: 1 to 8 per variant, display order; the
+  first is the cover, the second the shop card's hover image).
   Each id must be a variant photo that is unattached or already one of
   this product's (so it can move between the product's variants, but never
   be taken from another product). Photos dropped in a save are deleted
@@ -420,16 +421,30 @@ an active product, and in stock (stock > 0).
   search and price using AND), `sort` = newest (default) | price_low |
   price_high, `page`, `per_page` (default 24; no upper limit).
 - Card: id, reference_id, name, slug, product (id, reference_id, name, slug),
-  original_price, selling_price, cover_url (first photo or null), tags.
+  original_price, selling_price, cover_url (first photo or null),
+  hover_url (second photo, shown on hover; null with only one photo), tags.
 - Also returned: `meta` (Laravel pagination; `meta.total` is the
   "N candles" count), `filters` (as applied), `filter_options`,
   `price_range` {min, max} (selling prices of everything buyable,
   ignoring filters: the price slider's ends) and `tag_counts`
-  [{slug, name, count}] (how many listed variants have each tag under the
-  current search and price filters, ignoring the tag filter itself).
+  [{slug, name, count}] (how many buyable variants have each tag,
+  ignoring all filters; tags with no buyable variant are left out).
 - Not built: a "featured" sort (the schema has nothing to rank by; needs a
-  rule, e.g. a best-seller tag, a flag, or sales once orders exist) and
-  the single-variant detail endpoint.
+  rule, e.g. a best-seller tag, a flag, or sales once orders exist).
+
+GET /api/v1/shop/product-variants/{reference_id} (public): the details
+page for the exact variant picked.
+
+- Opens while the variant and its product are active, even when out of
+  stock (so a shared link says "out of stock"); an inactive variant or
+  product, or an unknown id, is 404.
+- `data`: id, reference_id, name, slug, sku, description (the variant's,
+  or the product's when it has none), original_price, selling_price,
+  stock, in_stock, product (id, reference_id, name, slug, description),
+  photos [{id, reference_id, url}] (display order; the first is the
+  cover), tags.
+- `other_variants`: the product's other buyable variants as listing
+  cards (oldest first), for the variant picker.
 
 Support:
 - Pagination.

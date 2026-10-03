@@ -871,7 +871,7 @@
                         "required": true,
                         "description": "The product reference id",
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -926,7 +926,7 @@
                         "required": true,
                         "description": "The product reference id",
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -994,7 +994,7 @@
                         "required": true,
                         "description": "The product reference id",
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -1014,7 +1014,7 @@
         "/shop/product-variants": {
             "get": {
                 "operationId": "v1.shop.product-variants.index",
-                "description": "One card per buyable variant (active, of an active product, in stock), paginated. Besides `data`, `links`\nand `meta`, the response has `filters` (as applied), `filter_options`, `price_range` (lowest and highest\nselling price of everything buyable, for the price slider) and `tag_counts` (how many listed variants have\neach tag, under the current search and price filters).",
+                "description": "One card per buyable variant (active, of an active product, in stock), paginated. Besides `data`, `links`\nand `meta`, the response has `filters` (as applied), `filter_options`, `price_range` (lowest and highest\nselling price of everything buyable, for the price slider) and `tag_counts` (how many buyable variants have\neach tag, ignoring filters).",
                 "summary": "List product variants for the shop",
                 "tags": [
                     "ProductVariant"
@@ -1353,6 +1353,57 @@
                 "security": []
             }
         },
+        "/shop/product-variants/{variant}": {
+            "get": {
+                "operationId": "v1.shop.product-variants.show",
+                "description": "Opens while the variant and its product are active, even when out of stock (`in_stock` is then false);\nanything else is 404. Besides `data`, the response has `other_variants`: the product's other buyable\nvariants as listing cards, for the variant picker.",
+                "summary": "View one product variant",
+                "tags": [
+                    "ProductVariant"
+                ],
+                "parameters": [
+                    {
+                        "name": "variant",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ShopVariantDetailResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ShopVariantDetailResource"
+                                        },
+                                        "other_variants": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ShopVariantCardResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "other_variants"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": []
+            }
+        },
         "/admin/products/{product}/variants/{variant}": {
             "delete": {
                 "operationId": "admin.v1.products.variants.destroy",
@@ -1368,7 +1419,7 @@
                         "required": true,
                         "description": "The product reference id",
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     },
                     {
@@ -2036,7 +2087,7 @@
                         "required": true,
                         "description": "The tag reference id",
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -2093,7 +2144,7 @@
                         "required": true,
                         "description": "The tag reference id",
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -2905,14 +2956,12 @@
                                     "uniqueItems": true
                                 },
                                 "photo_ids": {
-                                    "type": [
-                                        "array",
-                                        "null"
-                                    ],
-                                    "description": "Up to 8 media ids per variant (from POST /admin/uploads/variant-photos), in display order; the first is the cover.",
+                                    "type": "array",
+                                    "description": "1 to 8 media ids per variant (from POST /admin/uploads/variant-photos), in display order; the first is the cover, the second the hover image.",
                                     "items": {
                                         "type": "string"
                                     },
+                                    "minItems": 1,
                                     "maxItems": 8,
                                     "uniqueItems": true
                                 }
@@ -2923,7 +2972,8 @@
                                 "original_price",
                                 "selling_price",
                                 "stock",
-                                "is_active"
+                                "is_active",
+                                "photo_ids"
                             ]
                         },
                         "minItems": 1,
@@ -3005,6 +3055,13 @@
                         ],
                         "description": "The first photo, or null."
                     },
+                    "hover_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The second photo, shown on hover; null when there is only one photo (keep showing the cover)."
+                    },
                     "tags": {
                         "type": "array",
                         "items": {
@@ -3021,9 +3078,129 @@
                     "original_price",
                     "selling_price",
                     "cover_url",
+                    "hover_url",
                     "tags"
                 ],
                 "title": "ShopVariantCardResource"
+            },
+            "ShopVariantDetailResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Internal database id: shown for reference only; URLs and requests take reference_id."
+                    },
+                    "reference_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "sku": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The variant's own description, or the product's when it has none."
+                    },
+                    "original_price": {
+                        "type": "string",
+                        "description": "Rupees as a string, e.g. \"1199.00\"."
+                    },
+                    "selling_price": {
+                        "type": "string",
+                        "description": "What the customer pays; lower than original_price when discounted."
+                    },
+                    "stock": {
+                        "type": "integer",
+                        "description": "Units left; the most that can be added to the cart."
+                    },
+                    "in_stock": {
+                        "type": "boolean",
+                        "description": "False when stock is 0: show \"Out of stock\" and disable Add to cart."
+                    },
+                    "product": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "reference_id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "slug": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "reference_id",
+                            "name",
+                            "slug",
+                            "description"
+                        ]
+                    },
+                    "photos": {
+                        "type": "array",
+                        "description": "The gallery, in display order; the first is the cover.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "reference_id": {
+                                    "type": "string"
+                                },
+                                "url": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "reference_id",
+                                "url"
+                            ]
+                        }
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TagResource"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "reference_id",
+                    "name",
+                    "slug",
+                    "sku",
+                    "description",
+                    "original_price",
+                    "selling_price",
+                    "stock",
+                    "in_stock",
+                    "product",
+                    "photos",
+                    "tags"
+                ],
+                "title": "ShopVariantDetailResource"
             },
             "ShopVariantSort": {
                 "type": "string",
@@ -3344,6 +3521,25 @@
                     }
                 }
             },
+            "ModelNotFoundException": {
+                "description": "Not found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            },
             "InvalidCredentials": {
                 "description": "Unauthenticated",
                 "content": {
@@ -3384,25 +3580,6 @@
             },
             "AuthenticationException": {
                 "description": "Unauthenticated",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string",
-                                    "description": "Error overview."
-                                }
-                            },
-                            "required": [
-                                "message"
-                            ]
-                        }
-                    }
-                }
-            },
-            "ModelNotFoundException": {
-                "description": "Not found",
                 "content": {
                     "application/json": {
                         "schema": {

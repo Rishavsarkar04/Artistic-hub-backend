@@ -9,11 +9,13 @@ use App\Models\Tag;
 use App\Support\Money;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Read-only queries behind the shop's product-variant listing. Only variants customers can buy are
- * listed: the variant and its product are active and the variant is in stock.
+ * Read-only queries behind the shop's product-variant listing and details page. Only variants customers
+ * can buy are listed: the variant and its product are active and the variant is in stock. The details
+ * page also opens for an out-of-stock variant, so a shared link says "out of stock" instead of 404.
  */
 final class ShopVariantQuery
 {
@@ -33,6 +35,32 @@ final class ShopVariantQuery
         };
 
         return $query->paginate($filters->perPage);
+    }
+
+    /** A visible variant (in stock or not) with its product, photos and tags; 404 otherwise. */
+    public function find(string $referenceId): ProductVariant
+    {
+        return ProductVariant::query()
+            ->visible()
+            ->where('product_variants.reference_id', $referenceId)
+            ->with(['product', 'photos', 'tags'])
+            ->firstOrFail();
+    }
+
+    /**
+     * The other buyable variants of the same product, for the details page's variant picker.
+     *
+     * @return Collection<int, ProductVariant>
+     */
+    public function siblings(ProductVariant $variant): Collection
+    {
+        return ProductVariant::query()
+            ->buyable()
+            ->where('product_variants.product_id', $variant->product_id)
+            ->whereKeyNot($variant->id)
+            ->with(['product', 'photos', 'tags'])
+            ->orderBy('product_variants.id')
+            ->get();
     }
 
     /**

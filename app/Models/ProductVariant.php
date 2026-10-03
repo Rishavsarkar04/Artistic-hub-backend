@@ -76,13 +76,24 @@ class ProductVariant extends Model
     }
 
     /**
-     * What customers can buy: an active, in-stock variant of an active product.
+     * What customers can see: an active variant of an active product, in stock or not.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function visible(Builder $query): void
+    {
+        $query->active()->whereHas('product', fn (Builder $product) => $product->active());
+    }
+
+    /**
+     * What customers can buy: a visible variant that is in stock.
      *
      * @param  Builder<self>  $query
      */
     #[Scope]
     protected function buyable(Builder $query): void
     {
-        $query->active()->inStock()->whereHas('product', fn (Builder $product) => $product->active());
+        $query->visible()->inStock();
     }
 }

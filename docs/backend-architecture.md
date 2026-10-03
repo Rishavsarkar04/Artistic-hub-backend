@@ -34,8 +34,9 @@ As of 2026-10-02 the backend is a Laravel 13 application with:
   attaches photo media; `AdminProductQuery` the list), tags
   (`TagService`), the shared `media` table (`MediaService`, upload then
   attach, daily pruning of unattached uploads), client-facing ULID ids on
-  every exposed model (`HasReferenceId`), and the public shop listing
-  (`GET /api/v1/shop/product-variants`, `ShopVariantQuery`).
+  every exposed model (`HasReferenceId`), and the public shop listing and
+  variant details (`GET /api/v1/shop/product-variants[/{id}]`,
+  `ShopVariantQuery`).
   Do not run `php artisan install:api`: it would register `routes/api.php`
   through the `api:` option with its own prefix and overwrite the file.
 - Installed: `laravel/passport` (personal access tokens only),

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 | version and middleware are set below.
 |
 | Belongs here:
-| - The public shop catalogue under /shop (product-variant listing, later details).
+| - The public shop catalogue under /shop (product-variant listing and details).
 | - Provider callbacks: the Razorpay webhook (authenticated by signature).
 |
 | Anything that needs a signed-in customer goes in routes/api/customer.php,
@@ -28,5 +28,6 @@ Route::prefix('api/v1')->middleware('api')->name('api.v1.')->group(function () {
     // Storefront catalogue, open to everyone.
     Route::prefix('shop')->name('shop.')->group(function () {
         Route::get('product-variants', [ProductVariantController::class, 'index'])->name('product-variants.index');
+        Route::get('product-variants/{variant}', [ProductVariantController::class, 'show'])->whereUlid('variant')->name('product-variants.show');
     });
 });
