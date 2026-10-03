@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\Customer\AddressController;
 use App\Http\Controllers\Api\Customer\AddressDefaultController;
+use App\Http\Controllers\Api\Customer\Auth\PasswordController;
+use App\Http\Controllers\Api\Customer\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Customer\Auth\RegisterController;
 use App\Http\Controllers\Api\Customer\Auth\SessionController;
 use App\Http\Controllers\Api\Customer\CartController;
@@ -41,12 +43,16 @@ Route::prefix('api/v1')->middleware('api')->name('customer.v1.')->group(function
     Route::prefix('auth')->name('auth.')->middleware('throttle:6,1')->group(function () {
         Route::post('register', [RegisterController::class, 'store'])->name('register');
         Route::post('login', [SessionController::class, 'store'])->name('login');
+        Route::post('forgot-password', [PasswordResetController::class, 'sendLink'])->name('forgot-password');
+        Route::post('reset-password', [PasswordResetController::class, 'reset'])->name('reset-password');
     });
 
     Route::middleware(['auth:api', 'scope:customer', 'role:customer', 'active', 'token.fresh'])->group(function () {
         Route::prefix('auth')->name('auth.')->group(function () {
             Route::get('me', [SessionController::class, 'show'])->name('me');
             Route::post('logout', [SessionController::class, 'destroy'])->name('logout');
+            // Throttled: the current password must not be guessable by repeated tries.
+            Route::put('password', [PasswordController::class, 'update'])->middleware('throttle:6,1')->name('password');
         });
 
         Route::prefix('customer')->group(function () {

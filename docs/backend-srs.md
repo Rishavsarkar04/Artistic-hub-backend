@@ -137,6 +137,50 @@ the email exists. Rate-limit authentication and reset requests.
 Password change must be a dedicated operation, even when its form
 appears inside the profile page.
 
+Built 2026-10-03: forgot and reset for both roles, and the signed-in
+password change for customers (the admin `PUT /admin/auth/password` is not
+built yet).
+
+Change password (customer), `PUT /auth/password`:
+- **Request:** signed in, with `{ current_password, password,
+  password_confirmation }`.
+- **Wrong current password:** 422 on `current_password`.
+- **New password:** the registration rule, and different from the
+  current one (422 on `password`).
+- **On success:** 200. Every other token of the account is revoked, and
+  the one making the request stays signed in.
+- **Rate limit:** `throttle:6,1`, against guessing the current password.
+- **Code:** `ChangePasswordRequest` (shared, ready for the admin
+  endpoint), `AuthTokenService::changePassword()`,
+  `Customer\Auth\PasswordController`.
+
+Forgot and reset:
+- **Endpoints:** customer `POST /auth/forgot-password` and
+  `/auth/reset-password`; admin `POST /admin/auth/forgot-password` and
+  `/admin/auth/reset-password`. They are in each area's signed-out group,
+  which shares the `throttle:6,1` limit with login (6 requests a minute
+  per IP).
+- **Forgot-password** takes `{ email }` and always answers 200 with "If
+  an account exists for that email, we've sent a link to reset the
+  password." A link is emailed only when the email belongs to an account
+  of that area's role, and at most once a minute per account
+  (`auth.passwords.users.throttle`).
+- **The link** opens the area's own page:
+  `FRONTEND_URL/reset-password?token=…&email=…` for customers,
+  `FRONTEND_URL/admin/reset-password?…` for admins. Tokens are Laravel's
+  password broker tokens (hashed in `password_reset_tokens`), single use,
+  and expire after 60 minutes.
+- **Reset-password** takes `{ email, token, password,
+  password_confirmation }`. The password rule is the same as registration
+  (8+ characters, letters and numbers). On success it answers 200 and
+  revokes every Passport token of the account (signed out everywhere).
+  An invalid, used or expired token, or one from the other area, is 422
+  on `token`.
+- **Code:** `PasswordResetService`, `ResetPasswordNotification`
+  (queued), `Customer\Auth\PasswordResetController`,
+  `Admin\Auth\PasswordResetController`, and
+  `Requests\Auth\ForgotPasswordRequest` / `ResetPasswordRequest`.
+
 ## 4. Customer profile
 
 ### BE-PROFILE-01: Initial creation
@@ -890,13 +934,13 @@ GET  /tags
 Customer — guest (routes/api/customer.php):
 POST /auth/register
 POST /auth/login
-POST /auth/forgot-password
-POST /auth/reset-password
+POST /auth/forgot-password        (built)
+POST /auth/reset-password         (built)
 
 Customer — signed in as customer (routes/api/customer.php):
 GET  /auth/me
 POST /auth/logout
-PUT  /auth/password
+PUT  /auth/password               (built)
 POST /customer/profile
 GET  /customer/profile
 PUT  /customer/profile
@@ -915,8 +959,8 @@ GET  /customer/orders/{order_number}   (built; also the payment result page)
 
 Admin — guest (routes/api/admin.php):
 POST /admin/auth/login
-POST /admin/auth/forgot-password
-POST /admin/auth/reset-password
+POST /admin/auth/forgot-password  (built)
+POST /admin/auth/reset-password   (built)
 
 Admin — signed in as admin (routes/api/admin.php):
 GET  /admin/auth/me

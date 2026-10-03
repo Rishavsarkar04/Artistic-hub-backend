@@ -47,6 +47,22 @@ final class AuthTokenService
         );
     }
 
+    /**
+     * Sets a new password (the current one was checked by the request) and signs out every other session:
+     * all tokens except the one used for this request are revoked, so this device stays signed in.
+     */
+    public function changePassword(User $user, string $password): void
+    {
+        $user->forceFill(['password' => $password])->save();
+
+        $currentToken = $user->currentAccessToken();
+        $currentTokenId = $currentToken instanceof AccessToken ? $currentToken->oauth_access_token_id : null;
+
+        $user->tokens()
+            ->when($currentTokenId, fn ($query, $tokenId) => $query->whereKeyNot($tokenId))
+            ->update(['revoked' => true]);
+    }
+
     /** Revokes only the token used for this request; other devices stay signed in. */
     public function signOut(User $user): void
     {

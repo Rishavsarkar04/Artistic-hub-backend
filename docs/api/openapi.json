@@ -1577,6 +1577,233 @@
                 }
             }
         },
+        "/auth/password": {
+            "put": {
+                "operationId": "customer.v1.auth.password",
+                "description": "Needs the current password (422 on `current_password` when it is wrong) and a new one that differs from it.\nEvery other session is signed out; this one stays signed in. Limited to 6 attempts a minute.",
+                "summary": "Change your password",
+                "tags": [
+                    "Password"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangePasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Your password has been changed. Other devices have been signed out."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/auth/forgot-password": {
+            "post": {
+                "operationId": "customer.v1.auth.forgot-password",
+                "description": "Always answers the same, whether or not the email belongs to a customer account, so it never reveals which\nemails exist. When it does, a link to the customer reset page is emailed; it expires in 60 minutes.",
+                "summary": "Request a password reset email (customer)",
+                "tags": [
+                    "PasswordReset"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ForgotPasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "If an account exists for that email, we've sent a link to reset the password."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/auth/reset-password": {
+            "post": {
+                "operationId": "customer.v1.auth.reset-password",
+                "description": "Takes the `email` and `token` from the reset link and the new password. On success every session of the\naccount is signed out; sign in again with the new password. 422 on `token` when the link is invalid, used\nor expired.",
+                "summary": "Reset the password (customer)",
+                "tags": [
+                    "PasswordReset"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResetPasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Your password has been reset. Sign in with your new password."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/admin/auth/forgot-password": {
+            "post": {
+                "operationId": "admin.v1.auth.forgot-password",
+                "description": "Always answers the same, whether or not the email belongs to a admin account, so it never reveals which\nemails exist. When it does, a link to the admin reset page is emailed; it expires in 60 minutes.",
+                "summary": "Request a password reset email (admin)",
+                "tags": [
+                    "PasswordReset"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ForgotPasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "If an account exists for that email, we've sent a link to reset the password."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/admin/auth/reset-password": {
+            "post": {
+                "operationId": "admin.v1.auth.reset-password",
+                "description": "Takes the `email` and `token` from the reset link and the new password. On success every session of the\naccount is signed out; sign in again with the new password. 422 on `token` when the link is invalid, used\nor expired.",
+                "summary": "Reset the password (admin)",
+                "tags": [
+                    "PasswordReset"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResetPasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Your password has been reset. Sign in with your new password."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
         "/admin/products": {
             "get": {
                 "operationId": "admin.v1.products.index",
@@ -4173,6 +4400,29 @@
                 ],
                 "title": "CartResource"
             },
+            "ChangePasswordRequest": {
+                "type": "object",
+                "description": "Changing the password while signed in. Shared, so the admin endpoint can use it too.",
+                "properties": {
+                    "current_password": {
+                        "type": "string",
+                        "description": "The password the account has now."
+                    },
+                    "password": {
+                        "type": "string",
+                        "description": "Same rule as registration (8+ characters, letters and numbers), and different from the current one."
+                    },
+                    "password_confirmation": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "current_password",
+                    "password",
+                    "password_confirmation"
+                ],
+                "title": "ChangePasswordRequest"
+            },
             "CheckoutPaymentResource": {
                 "type": "object",
                 "properties": {
@@ -4830,6 +5080,21 @@
                 ],
                 "title": "CustomerTokenResource"
             },
+            "ForgotPasswordRequest": {
+                "type": "object",
+                "description": "Shared by the customer and admin forgot-password endpoints.",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "email"
+                ],
+                "title": "ForgotPasswordRequest"
+            },
             "Gender": {
                 "type": "string",
                 "description": "customer_profiles.gender (optional).\n",
@@ -5006,6 +5271,36 @@
                     "password_confirmation"
                 ],
                 "title": "RegisterRequest"
+            },
+            "ResetPasswordRequest": {
+                "type": "object",
+                "description": "Shared by the customer and admin reset-password endpoints.",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "From the reset link's `email` query parameter.",
+                        "maxLength": 255
+                    },
+                    "token": {
+                        "type": "string",
+                        "description": "From the reset link's `token` query parameter."
+                    },
+                    "password": {
+                        "type": "string",
+                        "description": "Same rule as registration: at least 8 characters, with letters and numbers."
+                    },
+                    "password_confirmation": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "email",
+                    "token",
+                    "password",
+                    "password_confirmation"
+                ],
+                "title": "ResetPasswordRequest"
             },
             "SaveProductRequest": {
                 "type": "object",

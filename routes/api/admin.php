@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Admin\Auth\SessionController;
 use App\Http\Controllers\Api\Admin\CustomerController;
 use App\Http\Controllers\Api\Admin\OrderController;
@@ -34,6 +35,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('api/v1/admin')->middleware('api')->name('admin.v1.')->group(function () {
     Route::prefix('auth')->name('auth.')->middleware('throttle:6,1')->group(function () {
         Route::post('login', [SessionController::class, 'store'])->name('login');
+        Route::post('forgot-password', [PasswordResetController::class, 'sendLink'])->name('forgot-password');
+        Route::post('reset-password', [PasswordResetController::class, 'reset'])->name('reset-password');
     });
 
     Route::middleware(['auth:api', 'scope:admin', 'role:admin', 'active', 'token.fresh'])->group(function () {

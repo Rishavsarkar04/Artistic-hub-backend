@@ -189,7 +189,7 @@ go to Accounts & Settings → Webhooks → Add New Webhook:
 - **Events:** `payment_link.paid`, `payment_link.expired`,
   `payment_link.cancelled`.
 
-**Queue worker (confirmation emails).** The confirmation email is queued
+**Queue worker (emails).** The order confirmation and password reset emails are queued
 (`QUEUE_CONNECTION=database`), so keep a worker running:
 
 ```sh
