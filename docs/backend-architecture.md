@@ -36,7 +36,8 @@ As of 2026-10-02 the backend is a Laravel 13 application with:
   attach, daily pruning of unattached uploads), client-facing ULID ids on
   every exposed model (`HasReferenceId`), and the public shop listing and
   variant details (`GET /api/v1/shop/product-variants[/{id}]`,
-  `ShopVariantQuery`).
+  `ShopVariantQuery`), and the customer's server cart (`/customer/cart`,
+  `CartService`).
   Do not run `php artisan install:api`: it would register `routes/api.php`
   through the `api:` option with its own prefix and overwrite the file.
 - Installed: `laravel/passport` (personal access tokens only),

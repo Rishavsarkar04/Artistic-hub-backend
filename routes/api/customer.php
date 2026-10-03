@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\Customer\AddressController;
 use App\Http\Controllers\Api\Customer\AddressDefaultController;
 use App\Http\Controllers\Api\Customer\Auth\RegisterController;
 use App\Http\Controllers\Api\Customer\Auth\SessionController;
+use App\Http\Controllers\Api\Customer\CartController;
+use App\Http\Controllers\Api\Customer\CartItemController;
 use App\Http\Controllers\Api\Customer\ProfileAvatarController;
 use App\Http\Controllers\Api\Customer\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -45,18 +47,42 @@ Route::prefix('api/v1')->middleware('api')->name('customer.v1.')->group(function
         });
 
         Route::prefix('customer')->group(function () {
-            Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');
-            Route::post('profile', [ProfileController::class, 'store'])->name('profile.store');
-            Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
-            // POST (not PUT): file uploads are sent as multipart/form-data, which PHP only parses on POST.
-            Route::post('profile/avatar', [ProfileAvatarController::class, 'update'])->name('profile.avatar.update');
-            Route::delete('profile/avatar', [ProfileAvatarController::class, 'destroy'])->name('profile.avatar.destroy');
+            // /customer/profile
+            Route::prefix('profile')->name('profile.')->group(function () {
+                Route::controller(ProfileController::class)->group(function () {
+                    Route::get('/', 'show')->name('show');
+                    Route::post('/', 'store')->name('store');
+                    Route::put('/', 'update')->name('update');
+                });
 
-            // No delete: address deletion is not in scope.
-            Route::get('addresses', [AddressController::class, 'index'])->name('addresses.index');
-            Route::post('addresses', [AddressController::class, 'store'])->name('addresses.store');
-            Route::put('addresses/{address}', [AddressController::class, 'update'])->whereUlid('address')->name('addresses.update');
-            Route::patch('addresses/{address}/default', [AddressDefaultController::class, 'update'])->whereUlid('address')->name('addresses.default');
+                // POST (not PUT): file uploads are sent as multipart/form-data, which PHP only parses on POST.
+                Route::controller(ProfileAvatarController::class)->prefix('avatar')->name('avatar.')->group(function () {
+                    Route::post('/', 'update')->name('update');
+                    Route::delete('/', 'destroy')->name('destroy');
+                });
+            });
+
+            // /customer/addresses. No delete: address deletion is not in scope.
+            Route::prefix('addresses')->name('addresses.')->group(function () {
+                Route::controller(AddressController::class)->group(function () {
+                    Route::get('/', 'index')->name('index');
+                    Route::post('/', 'store')->name('store');
+                    Route::put('{address}', 'update')->whereUlid('address')->name('update');
+                });
+
+                Route::patch('{address}/default', [AddressDefaultController::class, 'update'])->whereUlid('address')->name('default');
+            });
+
+            // /customer/cart
+            Route::prefix('cart')->name('cart.')->group(function () {
+                Route::get('/', [CartController::class, 'show'])->name('show');
+
+                Route::controller(CartItemController::class)->prefix('items')->name('items.')->group(function () {
+                    Route::post('/', 'store')->name('store');
+                    Route::patch('{item}', 'update')->whereUlid('item')->name('update');
+                    Route::delete('{item}', 'destroy')->whereUlid('item')->name('destroy');
+                });
+            });
         });
     });
 });

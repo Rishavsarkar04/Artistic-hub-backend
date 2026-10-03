@@ -497,6 +497,11 @@ Approved 2026-09-30: the ER diagram has `carts` and `cart_items`.
 - A cart item is a variant and a positive integer quantity. A variant
   appears once per cart (unique `cart_id` + `product_variant_id`);
   adding it again increases the quantity.
+- Cart responses include a price `fare_breakup` of the items with no issue
+  (added 2026-10-03): `mrp_total` (original price × quantity),
+  `discount` (mrp_total − subtotal) and `subtotal` (selling price ×
+  quantity); each item also has `original_subtotal`. Shipping and tax are
+  not part of it until their rules are decided.
 - Cart items store no prices. Every cart response shows current
   selling/original prices and marks items that are no longer eligible
   (section 8) or exceed available stock, without silently removing them.
@@ -509,6 +514,38 @@ Approved 2026-09-30: the ER diagram has `carts` and `cart_items`.
 Open: whether signed-out visitors keep a browser cart that is merged into
 the server cart on sign-in, or must sign in before adding to cart. Until
 decided, the frontend's browser cart remains a stand-in.
+
+#### Implemented 2026-10-03
+
+Signed-in customers with a profile (409 "Create your profile first."
+without one). Every change returns the whole cart.
+
+- GET /customer/cart: the cart; empty before the first add (no row is
+  created until then).
+- POST /customer/cart/items `{ product_variant_id, quantity? }`:
+  `product_variant_id` is
+  the variant's reference_id; quantity defaults to 1 and is added to any
+  already in the cart. The variant must be buyable (active, of an active
+  product, in stock), else 422 on product_variant_id; the cart's quantity cannot
+  be more than the stock, else 422 on quantity ("Only 3 left." / "Only 3
+  left, and 2 already in your cart.").
+- PATCH /customer/cart/items/{id} `{ quantity }`: sets the quantity (at
+  least 1; delete to remove). Lowering always works; raising needs the
+  variant to be buyable with enough stock, else 422.
+- DELETE /customer/cart/items/{id}: removes the item.
+- {id} is the cart item's reference_id; an item in another customer's
+  cart is 404. Each change locks the customer's profile row, so two adds
+  of the same variant end up as one item.
+- Response `data`: `items` (in the order added) each with id,
+  reference_id, quantity, subtotal (current selling_price × quantity),
+  issue, and product_variant (id, reference_id, name, slug, product, original and
+  selling price, stock, cover_url); `item_count` (total units),
+  `subtotal` (sum of item subtotals with no issue) and `has_issues`.
+- `issue` is null, `unavailable` (variant or product turned off),
+  `out_of_stock` or `not_enough_stock` (fewer left than the quantity).
+  Such items stay in the cart and are left out of the subtotal.
+- Not built yet: removing paid quantities (comes with payment capture)
+  and the guest cart question above.
 
 ### BE-CHECKOUT-01: Review
 

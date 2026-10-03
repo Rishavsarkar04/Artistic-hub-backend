@@ -21,4 +21,21 @@ final class Money
     {
         return bccomp($amount, $other, self::SCALE);
     }
+
+    public static function add(string $amount, string $other): string
+    {
+        return bcadd($amount, $other, self::SCALE);
+    }
+
+    /** $amount minus $other. */
+    public static function subtract(string $amount, string $other): string
+    {
+        return bcsub($amount, $other, self::SCALE);
+    }
+
+    /** A unit price times a whole quantity. */
+    public static function multiply(string $amount, int $quantity): string
+    {
+        return bcmul($amount, (string) $quantity, self::SCALE);
+    }
 }

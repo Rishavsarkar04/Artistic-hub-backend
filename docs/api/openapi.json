@@ -277,6 +277,264 @@
                 }
             }
         },
+        "/customer/cart": {
+            "get": {
+                "operationId": "customer.v1.cart.show",
+                "description": "Shows current prices and stock. An item that can no longer be bought stays, with an `issue`, and is left\nout of the subtotal. Before the first add the cart is empty.",
+                "summary": "View the cart",
+                "tags": [
+                    "Cart"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CartResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CartResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/customer/cart/items": {
+            "post": {
+                "operationId": "customer.v1.cart.items.store",
+                "description": "Adding a variant already in the cart increases its quantity. Only buyable variants can be added\n(active, of an active product, in stock), and the cart's quantity cannot be more than the stock: 422.",
+                "summary": "Add a variant to the cart",
+                "tags": [
+                    "CartItem"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddCartItemRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`CartResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CartResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/customer/cart/items/{item}": {
+            "patch": {
+                "operationId": "customer.v1.cart.items.update",
+                "description": "Lowering it always works. Raising it needs the variant to still be buyable, with enough stock: 422\notherwise. Only items in the customer's own cart can be changed; any other id returns 404.",
+                "summary": "Change an item's quantity",
+                "tags": [
+                    "CartItem"
+                ],
+                "parameters": [
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateCartItemRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`CartResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CartResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "customer.v1.cart.items.destroy",
+                "description": "Only items in the customer's own cart can be removed; any other id returns 404.",
+                "summary": "Remove an item from the cart",
+                "tags": [
+                    "CartItem"
+                ],
+                "parameters": [
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CartResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CartResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/admin/customers": {
             "get": {
                 "operationId": "admin.v1.customers.index",
@@ -2250,6 +2508,28 @@
             }
         },
         "schemas": {
+            "AddCartItemRequest": {
+                "type": "object",
+                "properties": {
+                    "product_variant_id": {
+                        "type": "string",
+                        "description": "The variant's reference_id. It must be buyable: active, of an active product, in stock."
+                    },
+                    "quantity": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Units to add (default 1); added to any already in the cart. The total cannot be more than the stock.",
+                        "minimum": 1,
+                        "maximum": 1000000
+                    }
+                },
+                "required": [
+                    "product_variant_id"
+                ],
+                "title": "AddCartItemRequest"
+            },
             "AddressLabel": {
                 "type": "string",
                 "description": "customer_addresses.label.\n",
@@ -2535,6 +2815,172 @@
                     "password"
                 ],
                 "title": "App.Http.Requests.Admin.Auth.LoginRequest"
+            },
+            "CartItemResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Internal database id: shown for reference only; URLs and requests take reference_id."
+                    },
+                    "reference_id": {
+                        "type": "string",
+                        "description": "Use this in PATCH / DELETE /customer/cart/items/{id}."
+                    },
+                    "quantity": {
+                        "type": "integer"
+                    },
+                    "subtotal": {
+                        "type": "string",
+                        "description": "Current selling_price \u00d7 quantity, rupees as a string."
+                    },
+                    "original_subtotal": {
+                        "type": "string",
+                        "description": "Current original_price \u00d7 quantity: the struck-through line price when discounted."
+                    },
+                    "issue": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Null when the item can be bought as it is. Otherwise unavailable (turned off), out_of_stock, or\nnot_enough_stock (fewer left than the quantity). Such items are left out of the subtotal."
+                    },
+                    "product_variant": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "reference_id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "slug": {
+                                "type": "string"
+                            },
+                            "product": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "reference_id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "slug": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "reference_id",
+                                    "name",
+                                    "slug"
+                                ]
+                            },
+                            "original_price": {
+                                "type": "string",
+                                "description": "Rupees as a string, e.g. \"1199.00\"."
+                            },
+                            "selling_price": {
+                                "type": "string",
+                                "description": "What the customer pays per unit, now."
+                            },
+                            "stock": {
+                                "type": "integer",
+                                "description": "Units left: the most this item's quantity can be."
+                            },
+                            "cover_url": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "The first photo, or null."
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "reference_id",
+                            "name",
+                            "slug",
+                            "product",
+                            "original_price",
+                            "selling_price",
+                            "stock",
+                            "cover_url"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "reference_id",
+                    "quantity",
+                    "subtotal",
+                    "original_subtotal",
+                    "issue",
+                    "product_variant"
+                ],
+                "title": "CartItemResource"
+            },
+            "CartResource": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "description": "In the order they were added.",
+                        "items": {
+                            "$ref": "#/components/schemas/CartItemResource"
+                        }
+                    },
+                    "item_count": {
+                        "type": "integer",
+                        "description": "Total units across all items (for the cart badge)."
+                    },
+                    "subtotal": {
+                        "type": "string",
+                        "description": "Sum of the subtotals of items with no issue, rupees as a string, e.g. \"1798.00\"."
+                    },
+                    "has_issues": {
+                        "type": "boolean",
+                        "description": "True when any item has an issue: ask the customer to fix the cart before checkout."
+                    },
+                    "fare_breakup": {
+                        "type": "object",
+                        "description": "Price breakup of the items with no issue, rupees as strings. Shipping and tax are not included:\ntheir rules are not decided yet (backend SRS, BE-CHECKOUT-02).",
+                        "properties": {
+                            "mrp_total": {
+                                "type": "string",
+                                "description": "Original price (MRP) \u00d7 quantity, summed."
+                            },
+                            "discount": {
+                                "type": "string",
+                                "description": "mrp_total \u2212 subtotal: what the customer saves."
+                            },
+                            "subtotal": {
+                                "type": "string",
+                                "description": "Selling price \u00d7 quantity, summed (same as `subtotal`)."
+                            }
+                        },
+                        "required": [
+                            "mrp_total",
+                            "discount",
+                            "subtotal"
+                        ]
+                    }
+                },
+                "required": [
+                    "items",
+                    "item_count",
+                    "subtotal",
+                    "has_issues",
+                    "fare_breakup"
+                ],
+                "title": "CartResource"
             },
             "CustomerAddressResource": {
                 "type": "object",
@@ -3420,6 +3866,21 @@
                     "avatar"
                 ],
                 "title": "UpdateAvatarRequest"
+            },
+            "UpdateCartItemRequest": {
+                "type": "object",
+                "properties": {
+                    "quantity": {
+                        "type": "integer",
+                        "description": "The new quantity (not an amount to add). To remove the item, delete it instead of sending 0.",
+                        "minimum": 1,
+                        "maximum": 1000000
+                    }
+                },
+                "required": [
+                    "quantity"
+                ],
+                "title": "UpdateCartItemRequest"
             },
             "UpdateProfileRequest": {
                 "type": "object",

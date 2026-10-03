@@ -58,6 +58,12 @@ class CustomerProfile extends Model
         return $this->morphOne(Media::class, 'mediable')->where('collection', MediaCollection::Avatar);
     }
 
+    /** @return HasOne<Cart, $this> Null until the first add. */
+    public function cart(): HasOne
+    {
+        return $this->hasOne(Cart::class);
+    }
+
     /** @return HasOne<CustomerAddress, $this> */
     public function defaultAddress(): HasOne
     {
