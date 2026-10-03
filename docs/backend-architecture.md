@@ -72,7 +72,8 @@ Use domain-specific classes with clear responsibilities.
 Avoid putting every operation into one large service.
 
 Inject concrete classes; do not add interface-to-implementation
-bindings in service providers for now (section 26.2).
+bindings in service providers (section 26.2). The payment gateway is the
+one interface: `PaymentGateway`, bound with the `#[Bind]` attribute.
 
 Customer and admin APIs are kept apart by route file, URL prefix,
 middleware group and controller namespace (section 2.1).
@@ -281,6 +282,8 @@ app/
 │   │   ├── Admin/         (incl. Auth/)
 │   │   └── Checkout/
 │   └── Resources/
+├── Contracts/
+│   └── PaymentGateway.php   (interface; #[Bind(RazorpayGateway::class)])
 ├── Integrations/
 │   └── Razorpay/
 │       ├── RazorpayGateway.php
@@ -624,10 +627,17 @@ Do not assume frontend checks prevent concurrent updates.
 
 ## 12. External payment adapter
 
-Keep Razorpay SDK calls inside the concrete `RazorpayGateway` class.
-Services inject `RazorpayGateway` directly through their constructors;
-Laravel resolves it without any service-provider binding. There is no
-`PaymentGateway` interface for now.
+Services depend on the `App\Contracts\PaymentGateway` interface
+(decided 2026-10-03), never on a provider class. The interface names its
+implementation with Laravel's container attribute
+`#[Bind(RazorpayGateway::class)]`, so there is still no service-provider
+binding. Keep Razorpay calls inside `RazorpayGateway`
+(`app/Integrations/Razorpay/RazorpayGateway.php`, `final`, implements
+`PaymentGateway`). It calls Razorpay's REST API with Laravel's HTTP client
+(no SDK package), so tests fake Razorpay with `Http::fake()`. It takes and
+returns DTOs (`PaymentLinkRequest`, `CreatedPaymentLink`) and turns every
+provider error into `PaymentGatewayUnavailable` (503). Add a method to the
+interface only when a service needs it.
 
 Expose only the operations actually required, such as:
 - createPaymentLink
@@ -717,7 +727,7 @@ Within one short transaction:
 7. Mark payments.status = paid.
 8. Save transaction_id and paid_at.
 9. Move the pending order to confirmed.
-10. Set confirmed_at.
+10. Set placed_at.
 11. Remove the paid quantities from the customer's cart.
 12. Persist a deduplicated confirmation-notification task.
 
@@ -990,11 +1000,12 @@ Inventory tests:
 - Late capture.
 - Admin stock changes during reservations.
 
-Never call Razorpay from application tests. Without an interface, swap the
-concrete gateway in the container instead:
-- `$this->mock(RazorpayGateway::class, fn ($mock) => ...)` for expectations, or
-- `$this->app->instance(RazorpayGateway::class, $fake)` with a small fake
-  subclass under `tests/`.
+Never call Razorpay from application tests. Either fake the HTTP calls
+with `Http::fake()` (what the checkout tests do, so the request payload is
+checked too), or swap the gateway behind its interface:
+- `$this->mock(PaymentGateway::class, fn ($mock) => ...)` for expectations, or
+- `$this->app->instance(PaymentGateway::class, $fake)` with a small fake
+  implementing `PaymentGateway` under `tests/`.
 
 Use database-backed tests for transaction and locking behavior.
 Do not treat SQLite tests as proof of MySQL concurrency behavior.
@@ -1011,7 +1022,8 @@ Do not introduce:
 - External network requests while holding inventory locks.
 - Frontend-only authorization or payment confirmation.
 - Blind provider retries that can create duplicate payable links.
-- Interface-to-class bindings in service providers (for now; section 26.2).
+- Interface-to-class bindings in service providers (section 26.2; the
+  payment gateway uses `#[Bind]` instead).
 - A strategy/factory for a behavior that has only one implementation.
 
 ## 25. Claude implementation checklist
@@ -1065,23 +1077,26 @@ or test. Do not create a class for every trivial statement.
 
 Inject dependencies through constructors.
 
-For now, type-hint concrete classes. Laravel's container builds them
-automatically, so no service-provider binding is needed.
+Type-hint concrete classes. Laravel's container builds them
+automatically, so no service-provider binding is needed. The one
+exception is the payment gateway: type-hint the `PaymentGateway`
+interface, which carries `#[Bind(RazorpayGateway::class)]`.
 
-Example:
+Example (as built):
 
-final class CheckoutPaymentService
+final class CheckoutService
 {
     public function __construct(
-        private RazorpayGateway $gateway,
-        private CheckoutReviewService $reviewService,
+        private CartService $cartService,
+        private PaymentGateway $paymentGateway,
     ) {}
 }
 
 Rules:
-- Do not create interfaces for services or the payment gateway yet.
+- Do not create interfaces for services.
 - Do not add `bind()` / `singleton()` calls that map an interface to a
-  class in `AppServiceProvider` or a new provider.
+  class in `AppServiceProvider` or a new provider. An interface that is
+  needed names its implementation with `#[Bind(...)]` on the interface.
 - Do not instantiate the Razorpay SDK inside controllers or business
   services, and do not `new` up services by hand; let the container
   inject them.
@@ -1094,8 +1109,8 @@ binding.
 
 ### 26.3 Adapter Pattern
 
-RazorpayGateway adapts Razorpay's SDK/API to the application's own
-methods and DTOs. It is a concrete class (no interface for now).
+RazorpayGateway adapts Razorpay's API to the application's own
+`PaymentGateway` interface and DTOs.
 
 Responsibilities:
 - Translate application input into provider requests.
@@ -1588,5 +1603,5 @@ new kind of class appears, add its rule here.
 - Tables: snake_case plural (`customer_profiles`); pivot tables follow the
   ER diagram (`product_variant_tags`).
 - Columns: snake_case; booleans start with `is_` or `has_` (`is_default`);
-  timestamps end with `_at` (`confirmed_at`).
+  timestamps end with `_at` (`placed_at`).
 - Status-like columns are strings backed by an enum in `app/Enums`.

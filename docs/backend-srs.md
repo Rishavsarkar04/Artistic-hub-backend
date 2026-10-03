@@ -547,7 +547,43 @@ without one). Every change returns the whole cart.
 - Not built yet: removing paid quantities (comes with payment capture)
   and the guest cart question above.
 
-### BE-CHECKOUT-01: Review
+### Agreed checkout flow (decided 2026-10-03)
+
+A read-only review endpoint, then one checkout call; no expected total is
+sent by the client.
+
+| # | Customer | Frontend calls | Backend |
+|---|---|---|---|
+| 1 | Opens the cart | GET /customer/cart | Items at current prices, fare_breakup, issues |
+| 2 | Picks or adds an address | GET (POST) /customer/addresses | Saved addresses |
+| 3 | Sees Review & Place Order | GET /customer/checkout/review?address_id= | Built 2026-10-03. Runs every check the checkout runs and changes nothing: the address is the customer's, the cart is not empty, every item can be bought in its quantity. Returns the address, items and fare_breakup at current prices; 422 names what to fix (`address_id`, `cart`, or `items.N` with a message such as "Only 2 left of Amber & Sandalwood (Mini)") |
+| 4 | Pay & Place Order | POST /customer/checkout { address_id } | Built 2026-10-03. Runs the review checks (same 422s), calculates the total itself from the cart, creates a pending order (customer, address and item snapshots) and a pending payment, then creates a Razorpay **Payment Link** for exactly that total. Returns { order_number, payment_number, total_amount, currency, payment_url, expires_at }: 201 for a new order, 200 when Pay is pressed again for the same cart and address while the link is still payable (same link, no new order). 409 while the same checkout is still waiting for Razorpay; 503 when Razorpay cannot create the link (the payment is marked failed, the order cancelled; pressing Pay again starts a new order). The cart and stock are not changed |
+| 4a | | | Razorpay link: amount in paise, `accept_partial` false, `reference_id` = payment_number, customer name/email/phone, Razorpay notifications off, expires after `RAZORPAY_LINK_EXPIRY_MINUTES` (30), `callback_url` = `RAZORPAY_CALLBACK_URL?order=<order_number>` (GET; Razorpay adds its `razorpay_*` query parameters). The callback is only a return to the shop: it never confirms the order |
+| 5 | Pays on Razorpay | Redirect to payment_url | — |
+| 6 | Payment succeeds | — | Verified webhook: order confirmed, stock deducted once, paid quantities removed from the cart, one confirmation email |
+| 7 | Returns to the shop | GET /checkout/{order_number}/status | Pending until step 6, then placed |
+
+Why no expected total: the total is never taken from the client, and the
+customer sees and confirms the exact charged amount on Razorpay's
+payment page. If a price changed between the review page and Pay, the
+customer sees the new amount there and can cancel; an unpaid pending order
+never becomes a placed order. This replaces "require renewed review"
+below.
+
+Decided 2026-10-03 for step 4: prices include GST (nothing is added);
+no shipping fare for now (`shipping_amount` 0); `discount_amount` is an
+order-level discount (none yet; the MRP savings are not a discount on the
+order); no stock reservation during payment (stock is checked at checkout
+and deducted once when the payment is confirmed). `placed_at` stays null
+until the payment is confirmed.
+
+Still to build (steps 6–7): the verified Razorpay webhook and the status
+endpoint. Open points for that step: a payment confirmed when stock has
+since run out (refund or accept), and an older pending link paid after a
+newer checkout (a new checkout leaves earlier pending links payable until
+they expire).
+
+### BE-CHECKOUT-01: Review (superseded by the agreed flow above)
 
 Accept:
 - Selected customer address ID.
@@ -609,7 +645,7 @@ customer purchase.
 Proposed state before payment:
 - orders.status = pending
 - payments.status = pending
-- orders.confirmed_at = null
+- orders.placed_at = null
 
 Allow multiple payment attempts per order while preventing duplicate
 concurrent payable attempts.
@@ -639,7 +675,7 @@ Requirements:
 5. Mark payments.status = paid and save paid_at.
 6. Save transaction_id.
 7. Change orders.status from pending to confirmed.
-8. Set confirmed_at.
+8. Set placed_at (the order date; there is no separate confirmed_at).
 9. Deduct purchased stock exactly once.
 10. Remove the paid quantities from the customer's cart (BE-CART-01).
 11. Schedule one order-confirmation email after successful commit.
@@ -825,8 +861,8 @@ GET    /customer/cart
 POST   /customer/cart/items
 PATCH  /customer/cart/items/{id}
 DELETE /customer/cart/items/{id}
-POST /checkout/review
-POST /checkout/payment
+GET  /customer/checkout/review?address_id=   (built)
+POST /customer/checkout           { address_id } (built; agreed flow, section 9)
 GET  /checkout/{order_number}/status
 GET  /customer/orders
 GET  /customer/orders/{order_number}
@@ -927,7 +963,7 @@ the frontend to match, rather than bending the backend to the mock.
 | Customer paths | `/customer/profile`, `/customer/addresses`, `/customer/orders`, `/auth/password` | `/account/profile`, `/account/addresses`, `/orders`, `/account/password` |
 | Catalog | `/variants` listing (variants are the cards) | `/products` listing |
 | Cart | Server cart at `/customer/cart` | Browser localStorage cart |
-| Checkout | `/checkout/review`, `/checkout/payment`, status polling | `POST /orders` |
+| Checkout | `GET /customer/checkout/review?address_id=` (built), then `POST /customer/checkout { address_id }`, status polling | `POST /orders` |
 | Money | Decimal strings (`"499.00"`) | Admin: integer paise; shop: whole rupees |
 | Selling price field | `selling_price` | Admin: `effective_price` |
 | Product save | One nested save (decided 2026-10-03): `POST/PUT /admin/products` with `variants[]`, each with `tag_ids` and `photos` (paths) | Same nested shape, but sends `images: [{ url, alt_text, sort_order }]` and `effective_price` |

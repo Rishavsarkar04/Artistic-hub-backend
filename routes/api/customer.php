@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Customer\Auth\RegisterController;
 use App\Http\Controllers\Api\Customer\Auth\SessionController;
 use App\Http\Controllers\Api\Customer\CartController;
 use App\Http\Controllers\Api\Customer\CartItemController;
+use App\Http\Controllers\Api\Customer\CheckoutController;
 use App\Http\Controllers\Api\Customer\ProfileAvatarController;
 use App\Http\Controllers\Api\Customer\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -27,7 +28,7 @@ use Illuminate\Support\Facades\Route;
 | - Signed out, throttled: /auth/register, login, forgot-password,
 |   reset-password. Sign-in accepts customer accounts only.
 | - Signed in (auth:api + scope:customer + role:customer + active + token.fresh): /auth/me, logout, password;
-|   /customer/profile, addresses, cart, orders; /checkout/*.
+|   /customer/profile, addresses, cart, checkout.
 |
 | Endpoint list: docs/backend-srs.md, section 14.
 | Conventions: docs/backend-architecture.md, section 2.1.
@@ -82,6 +83,12 @@ Route::prefix('api/v1')->middleware('api')->name('customer.v1.')->group(function
                     Route::patch('{item}', 'update')->whereUlid('item')->name('update');
                     Route::delete('{item}', 'destroy')->whereUlid('item')->name('destroy');
                 });
+            });
+
+            // /customer/checkout
+            Route::prefix('checkout')->name('checkout.')->controller(CheckoutController::class)->group(function () {
+                Route::get('review', 'review')->name('review');
+                Route::post('/', 'store')->name('store');
             });
         });
     });

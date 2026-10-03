@@ -35,4 +35,20 @@ return [
         ],
     ],
 
+    /*
+    | Razorpay (payments). Test keys locally, live keys in production; never commit them.
+    | callback_url: where Razorpay sends the customer after paying (the frontend's payment result page);
+    | the order number is added as ?order=….
+    */
+    'razorpay' => [
+        'key_id' => env('RAZORPAY_KEY_ID'),
+        'key_secret' => env('RAZORPAY_KEY_SECRET'),
+        'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
+        'base_url' => env('RAZORPAY_BASE_URL', 'https://api.razorpay.com/v1'),
+        'callback_url' => env('RAZORPAY_CALLBACK_URL', 'http://localhost:5173/checkout/result'),
+        // How long a payment link stays payable (Razorpay needs at least 15 minutes).
+        'link_expiry_minutes' => (int) env('RAZORPAY_LINK_EXPIRY_MINUTES', 30),
+        'currency' => 'INR',
+    ],
+
 ];

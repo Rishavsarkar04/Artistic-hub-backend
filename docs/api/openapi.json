@@ -535,6 +535,156 @@
                 }
             }
         },
+        "/customer/checkout/review": {
+            "get": {
+                "operationId": "customer.v1.checkout.review",
+                "description": "Checks everything the payment will check (the address is yours, the cart is not empty, every item can be\nbought in its quantity) and returns the address, items and fare_breakup at current prices. Changes nothing.\n422 names what to fix: `address_id`, `cart`, or each item as `items.N`.",
+                "summary": "Review the order",
+                "tags": [
+                    "Checkout"
+                ],
+                "parameters": [
+                    {
+                        "name": "address_id",
+                        "in": "query",
+                        "required": true,
+                        "description": "The chosen address's reference_id.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CheckoutReviewResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CheckoutReviewResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/customer/checkout": {
+            "post": {
+                "operationId": "customer.v1.checkout.store",
+                "description": "Runs the review checks again (same 422s), creates a pending order from the cart at current prices and\nreturns a Razorpay `payment_url` to redirect the browser to. The total is worked out here, never sent by\nthe client. Pressing Pay again for the same cart and address returns the same link while it is valid.\nThe cart and stock are unchanged until the payment is confirmed. 409 while the same checkout is still\nbeing prepared; 503 when Razorpay cannot start the payment (try again).",
+                "summary": "Pay for the cart",
+                "tags": [
+                    "Checkout"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CheckoutRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`CheckoutPaymentResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CheckoutPaymentResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/admin/customers": {
             "get": {
                 "operationId": "admin.v1.customers.index",
@@ -2981,6 +3131,103 @@
                     "fare_breakup"
                 ],
                 "title": "CartResource"
+            },
+            "CheckoutPaymentResource": {
+                "type": "object",
+                "properties": {
+                    "order_number": {
+                        "type": "string",
+                        "description": "Keep it: Razorpay returns the customer to the result page with ?order=<order_number>."
+                    },
+                    "payment_number": {
+                        "type": "string"
+                    },
+                    "total_amount": {
+                        "type": "string",
+                        "description": "Rupees as a string; prices include GST and there is no shipping fare yet."
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "payment_url": {
+                        "type": "string",
+                        "description": "Redirect the browser here (Razorpay's payment page)."
+                    },
+                    "expires_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The link stops working after this; press Pay again for a new one."
+                    }
+                },
+                "required": [
+                    "order_number",
+                    "payment_number",
+                    "total_amount",
+                    "currency",
+                    "payment_url",
+                    "expires_at"
+                ],
+                "title": "CheckoutPaymentResource"
+            },
+            "CheckoutRequest": {
+                "type": "object",
+                "properties": {
+                    "address_id": {
+                        "type": "string",
+                        "description": "The reference_id of one of your saved addresses."
+                    }
+                },
+                "required": [
+                    "address_id"
+                ],
+                "title": "CheckoutRequest"
+            },
+            "CheckoutReviewResource": {
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "$ref": "#/components/schemas/CustomerAddressResource"
+                    },
+                    "items": {
+                        "type": "array",
+                        "description": "Every item can be bought in its quantity (otherwise the review returns 422).",
+                        "items": {
+                            "$ref": "#/components/schemas/CartItemResource"
+                        }
+                    },
+                    "item_count": {
+                        "type": "integer"
+                    },
+                    "fare_breakup": {
+                        "type": "object",
+                        "description": "Rupees as strings. Shipping and tax are not included yet: their rules are not decided\n(backend SRS, section 9).",
+                        "properties": {
+                            "mrp_total": {
+                                "type": "string"
+                            },
+                            "discount": {
+                                "type": "string"
+                            },
+                            "subtotal": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "mrp_total",
+                            "discount",
+                            "subtotal"
+                        ]
+                    }
+                },
+                "required": [
+                    "address",
+                    "items",
+                    "item_count",
+                    "fare_breakup"
+                ],
+                "title": "CheckoutReviewResource"
             },
             "CustomerAddressResource": {
                 "type": "object",

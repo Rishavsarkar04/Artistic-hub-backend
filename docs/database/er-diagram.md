@@ -17,6 +17,7 @@ Source of truth for the Artistic Hub database schema. Migrations in `database/mi
 - Each customer has at most one cart (`carts.customer_profile_id` is unique), and a variant appears once per cart (`cart_items` is unique on `cart_id` + `product_variant_id`); adding it again increases `quantity`. Cart items store **no prices**: checkout reads the current price, stock and active state and asks the customer to reconfirm if anything changed. Paying clears only the quantities that were paid for. Deleting a variant deletes its cart items (cascade); order items keep their snapshot with `product_variant_id` set to null.
 - Catalog columns as built: `product_variants.original_price` / `selling_price` are `decimal(10,2)` with `selling_price <= original_price` (checked by the app); `stock` is unsigned; `sku` is up to 64 characters; tag `name` is up to 100 characters. Deleting a product deletes its variants and tag links (cascade); its variants' photos are detached (see `media`). Deleting a tag deletes only its links.
 - `media` (decided 2026-10-03) holds every uploaded file: variant photos (`collection = variant_photo`) and customer avatars (`collection = avatar`). It is polymorphic: `mediable_type` + `mediable_id` point at the owner (`App\Models\ProductVariant`, `App\Models\CustomerProfile`). An upload creates a row with no owner; saving the owner attaches it. Rows still unattached after 24 hours are pruned with their files (`php artisan model:prune`, scheduled daily). `path` is unique; `disk` records where the file is; `sort_order` 0 is a variant's cover. A polymorphic relation has no database foreign key, so the app does what `nullOnDelete` would: when a variant is deleted (directly, left out of a product save, or with its product) its photos get `mediable_type` / `mediable_id` set to null, and the daily prune then deletes those rows and their files.
+- Checkout (built 2026-10-03): an order is created `pending` with its snapshots when the customer presses Pay, and `placed_at` (the order date the customer sees) is set only when the payment is confirmed and the status becomes `confirmed`; there is no separate `confirmed_at` (decided 2026-10-03). `order_number` looks like `AH-20261003-7K2Q9M`. Prices include GST and no shipping is charged yet, so `shipping_amount` is 0; `discount_amount` is an order-level discount (none yet), not the MRP savings. `order_items.variant_photo_path` is the media path of the variant's cover at checkout. Each payment row is one Razorpay payment link: `payment_number` (`PAY` + ULID) is sent as Razorpay's `reference_id`, `payment_session_id` is the link id (`plink_…`), `payment_url` is the page the customer is sent to and `expires_at` when it stops working; `transaction_id` and `method` are filled from the confirmed payment (`method` is null until then). An order can have several payment rows (a retry after a failed or expired link); the newest one (`Order::latestPayment()`) gives the order's payment status, and `orders` keeps no copy of it.
 - Money columns are `decimal`. `orders.total_amount = subtotal - discount_amount + shipping_amount`; `order_items.total_amount = subtotal - discount_amount`.
 
 ## Diagram
@@ -165,7 +166,7 @@ erDiagram
     ORDERS {
         bigint id PK
         bigint customer_profile_id FK
-        string order_number UK
+        string order_number UK "e.g. AH-20261003-7K2Q9M"
         string status "pending, confirmed, processing, completed, cancelled"
         decimal subtotal "sum of item subtotals"
         decimal discount_amount "total item or order discount"
@@ -186,10 +187,9 @@ erDiagram
         string tracking_number "nullable; required when completed"
         text notes
         string cancellation_reason "nullable"
-        timestamp confirmed_at "nullable"
         timestamp completed_at "nullable"
         timestamp cancelled_at "nullable"
-        timestamp placed_at
+        timestamp placed_at "nullable; set when payment is confirmed"
         timestamp created_at
         timestamp updated_at
     }
@@ -215,14 +215,16 @@ erDiagram
     PAYMENTS {
         bigint id PK
         bigint order_id FK
-        string payment_number UK
-        string method "cod, card, upi, bank_transfer, wallet"
-        string provider "razorpay, stripe, cash, etc.; nullable"
+        string payment_number UK "PAY + ULID; Razorpay reference_id"
+        string method "nullable until paid; card, upi, netbanking, wallet, emi"
+        string provider "razorpay"
         string status "pending, processing, paid, failed, cancelled, refunded"
         decimal amount
-        string currency
-        string transaction_id UK "nullable"
-        string payment_session_id UK "nullable"
+        string currency "INR"
+        string transaction_id UK "nullable; Razorpay payment id"
+        string payment_session_id UK "nullable; Razorpay payment link id"
+        string payment_url "nullable; Razorpay payment page"
+        timestamp expires_at "nullable; when the link stops working"
         timestamp paid_at "nullable"
         timestamp failed_at "nullable"
         timestamp refunded_at "nullable"

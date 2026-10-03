@@ -155,6 +155,29 @@ Run it by hand any time with `php artisan model:prune --model="App\Models\Media"
 The IAM user for `AWS_ACCESS_KEY_ID` needs `s3:PutObject`, `s3:GetObject`
 and `s3:DeleteObject` on the bucket.
 
+## 5c. Payments (Razorpay)
+
+Checkout creates a Razorpay Payment Link and the frontend redirects the
+customer to it. Locally, use **test mode** keys from the Razorpay dashboard
+(Account & Settings → API Keys); live keys only in production. Never commit
+them.
+
+```env
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxx
+RAZORPAY_KEY_SECRET=xxxxxxxx
+RAZORPAY_WEBHOOK_SECRET=
+RAZORPAY_CALLBACK_URL=http://localhost:5173/checkout/result
+RAZORPAY_LINK_EXPIRY_MINUTES=30
+```
+
+- `RAZORPAY_CALLBACK_URL` is the frontend page Razorpay returns the
+  customer to; the backend adds `?order=<order_number>`. It only shows the
+  result: the order is confirmed by the webhook (not built yet), never by
+  this redirect.
+- `RAZORPAY_LINK_EXPIRY_MINUTES` must be at least 15 (Razorpay's minimum).
+- Without keys, `POST /customer/checkout` answers 503 and cancels the
+  pending order. Tests never call Razorpay (they use `Http::fake`).
+
 ## 6. Create the first admin
 
 There is no admin sign-up page and no default admin password. Create one

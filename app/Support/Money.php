@@ -33,6 +33,12 @@ final class Money
         return bcsub($amount, $other, self::SCALE);
     }
 
+    /** Rupees to paise for payment providers, e.g. "899.50" → 89950. Only at the provider boundary. */
+    public static function toPaise(string $amount): int
+    {
+        return (int) bcmul($amount, '100', 0);
+    }
+
     /** A unit price times a whole quantity. */
     public static function multiply(string $amount, int $quantity): string
     {
