@@ -473,8 +473,8 @@ an active product, and in stock (stock > 0).
   ignoring filters: the price slider's ends) and `tag_counts`
   [{slug, name, count}] (how many buyable variants have each tag,
   ignoring all filters; tags with no buyable variant are left out).
-- Not built: a "featured" sort (the schema has nothing to rank by; needs a
-  rule, e.g. a best-seller tag, a flag, or sales once orders exist).
+- No "featured" sort (decided 2026-10-03: dropped). The shop's default
+  sort is `newest`, and the frontend no longer offers "Featured".
 
 GET /api/v1/shop/product-variants/{reference_id} (public): the details
 page for the exact variant picked.

@@ -14,6 +14,7 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -242,8 +243,54 @@ class RazorpayWebhookTest extends TestCase
         $this->webhook($event)->assertOk();
 
         $this->webhook(['event' => 'payment.authorized', 'payload' => []])->assertOk();
-        $this->webhook(['event' => 'payment_link.paid', 'payload' => []])->assertOk();
 
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+    }
+
+    public function test_an_event_we_do_not_handle_is_not_logged(): void
+    {
+        Log::spy();
+
+        $this->webhook(['event' => 'payment.authorized', 'payload' => ['payment' => ['entity' => ['id' => 'pay_123']]]])->assertOk();
+
+        Log::shouldNotHaveReceived('warning');
+    }
+
+    public function test_a_paid_event_without_the_payment_is_logged_and_ignored(): void
+    {
+        $this->add($this->candle, 1);
+        $order = $this->checkout();
+        $payment = $order->latestPayment;
+        Log::spy();
+
+        $event = $this->paidEvent($order);
+        unset($event['payload']['payment']);
+        $this->webhook($event)->assertOk();
+
+        Log::shouldHaveReceived('warning')->once()->with('Razorpay webhook ignored: missing payload.payment.entity.id', [
+            'event' => 'payment_link.paid',
+            'event_id' => null,
+            'link_id' => $payment->payment_session_id,
+            'reference_id' => $payment->payment_number,
+        ]);
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Pending, $payment->fresh()->status);
+    }
+
+    public function test_a_link_event_without_the_link_is_logged_and_ignored(): void
+    {
+        $this->add($this->candle, 1);
+        $order = $this->checkout();
+        Log::spy();
+
+        $this->webhook(['event' => 'payment_link.expired', 'payload' => []])->assertOk();
+
+        Log::shouldHaveReceived('warning')->once()->with('Razorpay webhook ignored: missing payload.payment_link.entity.id', [
+            'event' => 'payment_link.expired',
+            'event_id' => null,
+            'link_id' => null,
+            'reference_id' => null,
+        ]);
         $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
     }
 

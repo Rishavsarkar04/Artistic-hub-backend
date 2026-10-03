@@ -611,8 +611,15 @@ Enable these three events on the webhook in the Razorpay dashboard:
 | `payment_link.expired` | `PaymentCancellationService::cancelPending()`: if the payment is still `pending`, payment `cancelled`, and the order `cancelled` (if still pending) with "The payment link expired." |
 | `payment_link.cancelled` | Same, with "The payment link was cancelled." |
 
-- **Other events,** and payloads missing the fields we need, are answered
-  200 and ignored.
+- **Other events** are answered 200 and ignored, without logging (Razorpay
+  sends whatever the dashboard enables).
+- **One of these three events missing a field we need** (the link id, or
+  for `paid` the payment id) is answered 200 and ignored, but logged as a
+  warning (`Razorpay webhook ignored: missing …`, with the event, event id,
+  link id and `reference_id`). Razorpay will not retry it, so without the
+  log a paid link would leave its order pending, then cancelled as expired,
+  with no trace. Look the link up in the Razorpay dashboard and fix the
+  order by hand.
 - **Links we did not create** are answered 200, logged, and ignored. A
   link is ours when `payment_session_id` matches the link id and the
   link's `reference_id` equals our `payment_number`.
