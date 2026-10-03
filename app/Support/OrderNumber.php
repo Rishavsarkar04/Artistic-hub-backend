@@ -10,10 +10,15 @@ final class OrderNumber
     /** No 0/O or 1/I, so a number can be read out over the phone. */
     private const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 
+    private const PREFIX = 'ORD';
+
     private const SUFFIX_LENGTH = 6;
 
+    /** Regex for a valid order number, e.g. for route constraints. */
+    public const PATTERN = 'ORD-[0-9]{8}-[2-9A-HJ-NP-Z]{6}';
+
     /**
-     * "AH-20261003-7K2Q9M": the date plus a random suffix, drawn again until $taken says it is free.
+     * "ORD-20261003-7K2Q9M": the date plus a random suffix, drawn again until $taken says it is free.
      * The unique index on orders.order_number is the final guarantee.
      *
      * @param  Closure(string): bool  $taken
@@ -21,7 +26,7 @@ final class OrderNumber
     public static function unique(DateTimeInterface $date, Closure $taken): string
     {
         do {
-            $orderNumber = 'ORD-'.$date->format('Ymd').'-'.self::randomSuffix();
+            $orderNumber = self::PREFIX.'-'.$date->format('Ymd').'-'.self::randomSuffix();
         } while ($taken($orderNumber));
 
         return $orderNumber;

@@ -549,6 +549,9 @@ without one). Every change returns the whole cart.
 
 ### Agreed checkout flow (decided 2026-10-03)
 
+How it is built (amounts, order numbers, reuse on a repeated Pay, payment
+records, the result page): `docs/checkout-and-payments.md`.
+
 A read-only review endpoint, then one checkout call; no expected total is
 sent by the client.
 
@@ -561,7 +564,7 @@ sent by the client.
 | 4a | | | Razorpay link: amount in paise, `accept_partial` false, `reference_id` = payment_number, customer name/email/phone, Razorpay notifications off, expires after `RAZORPAY_LINK_EXPIRY_MINUTES` (30), `callback_url` = `RAZORPAY_CALLBACK_URL?order=<order_number>` (GET; Razorpay adds its `razorpay_*` query parameters). The callback is only a return to the shop: it never confirms the order |
 | 5 | Pays on Razorpay | Redirect to payment_url | — |
 | 6 | Payment succeeds | — | Verified webhook: order confirmed, stock deducted once, paid quantities removed from the cart, one confirmation email |
-| 7 | Returns to the shop | GET /checkout/{order_number}/status | Pending until step 6, then placed |
+| 7 | Returns to the shop | GET /customer/orders/{order_number} | Built 2026-10-03 (replaces the separate status endpoint). Razorpay redirects to the frontend result page with `?order=<order_number>`; the page calls this. Returns the order in any status (pending, confirmed, cancelled…) with `status`, `payment` (newest attempt: `status`, `can_pay`, `payment_url` while payable, `expires_at`, `paid_at`), `fare_breakup`, customer, shipping address and item snapshots. Stays `pending` until the webhook (step 6) confirms the payment, so the page polls while `status` is pending and `payment.status` is pending. Another customer's order number is 404 |
 
 Why no expected total: the total is never taken from the client, and the
 customer sees and confirms the exact charged amount on Razorpay's
@@ -577,8 +580,7 @@ order); no stock reservation during payment (stock is checked at checkout
 and deducted once when the payment is confirmed). `placed_at` stays null
 until the payment is confirmed.
 
-Still to build (steps 6–7): the verified Razorpay webhook and the status
-endpoint. Open points for that step: a payment confirmed when stock has
+Still to build (step 6): the verified Razorpay webhook. Open points for that step: a payment confirmed when stock has
 since run out (refund or accept), and an older pending link paid after a
 newer checkout (a new checkout leaves earlier pending links payable until
 they expire).
@@ -761,6 +763,11 @@ Customers can list and view their own placed orders, including:
 
 Pending checkout records should not appear as successfully placed orders.
 
+Built 2026-10-03: GET /customer/orders lists orders with `placed_at` set
+(newest first, paginated, default 10, max 50); GET /customer/orders/{order_number}
+shows one order in any status. Details: `docs/checkout-and-payments.md`,
+sections 8 and 9.
+
 ### BE-ORDER-02: Admin customers and orders
 
 Admin can:
@@ -863,9 +870,8 @@ PATCH  /customer/cart/items/{id}
 DELETE /customer/cart/items/{id}
 GET  /customer/checkout/review?address_id=   (built)
 POST /customer/checkout           { address_id } (built; agreed flow, section 9)
-GET  /checkout/{order_number}/status
-GET  /customer/orders
-GET  /customer/orders/{order_number}
+GET  /customer/orders                  (built; placed orders only, newest first)
+GET  /customer/orders/{order_number}   (built; also the payment result page)
 
 Admin — guest (routes/api/admin.php):
 POST /admin/auth/login

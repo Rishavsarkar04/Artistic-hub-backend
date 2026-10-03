@@ -931,6 +931,273 @@
                 }
             }
         },
+        "/customer/orders": {
+            "get": {
+                "operationId": "customer.v1.orders.index",
+                "description": "Placed orders only (payment confirmed), newest first, paginated. Pending or failed checkouts are not listed:\nopen them by order number instead. Each row is a summary; use the order number to show the details.",
+                "summary": "List your orders",
+                "tags": [
+                    "Order"
+                ],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Defaults to 10.",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated set of `CustomerOrderSummaryResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/CustomerOrderSummaryResource"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "properties": {
+                                                "first": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "prev": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "next": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "first",
+                                                "last",
+                                                "prev",
+                                                "next"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "from",
+                                                "last_page",
+                                                "links",
+                                                "path",
+                                                "per_page",
+                                                "to",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "links",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/customer/orders/{order}": {
+            "get": {
+                "operationId": "customer.v1.orders.show",
+                "description": "Any of your orders by its order number, including a pending or cancelled checkout: the payment result page\n(where Razorpay returns with `?order=`) calls this. `status` is the order status and `payment.status` the\nnewest payment's status; while `payment.can_pay` is true, `payment.payment_url` can be opened again.\nAnother customer's order number returns 404.",
+                "summary": "Show an order",
+                "tags": [
+                    "Order"
+                ],
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CustomerOrderResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CustomerOrderResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/admin/products": {
             "get": {
                 "operationId": "admin.v1.products.index",
@@ -3304,6 +3571,301 @@
                 ],
                 "title": "CustomerAddressResource"
             },
+            "CustomerOrderResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Internal database id: shown for reference only; URLs take order_number."
+                    },
+                    "order_number": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "pending until the payment is confirmed, then confirmed, processing, completed; or cancelled."
+                    },
+                    "placed_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Null while pending: the order date, set when the payment is confirmed."
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "cancelled_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "cancellation_reason": {
+                        "type": "string"
+                    },
+                    "payment": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "payment_number": {
+                                "type": "string"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "The newest payment attempt's status: pending, processing, paid, failed, cancelled, refunded."
+                            },
+                            "method": {
+                                "type": "string",
+                                "description": "Null until paid."
+                            },
+                            "amount": {
+                                "type": "string"
+                            },
+                            "currency": {
+                                "type": "string"
+                            },
+                            "can_pay": {
+                                "type": "boolean",
+                                "description": "True while the link can still be paid: show \"Complete payment\" and redirect to payment_url."
+                            },
+                            "payment_url": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "Only while can_pay is true."
+                            },
+                            "expires_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "paid_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "payment_number",
+                            "status",
+                            "method",
+                            "amount",
+                            "currency",
+                            "can_pay",
+                            "payment_url",
+                            "expires_at",
+                            "paid_at"
+                        ]
+                    },
+                    "fare_breakup": {
+                        "type": "object",
+                        "description": "Rupees as strings. total_amount = subtotal - discount_amount + shipping_amount; prices include GST.",
+                        "properties": {
+                            "subtotal": {
+                                "type": "string"
+                            },
+                            "discount_amount": {
+                                "type": "string"
+                            },
+                            "shipping_amount": {
+                                "type": "string"
+                            },
+                            "total_amount": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "subtotal",
+                            "discount_amount",
+                            "shipping_amount",
+                            "total_amount"
+                        ]
+                    },
+                    "customer": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "phone": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "email",
+                            "phone"
+                        ]
+                    },
+                    "shipping_address": {
+                        "type": "object",
+                        "description": "The delivery address as it was at checkout.",
+                        "properties": {
+                            "recipient_name": {
+                                "type": "string"
+                            },
+                            "phone": {
+                                "type": "string"
+                            },
+                            "address_line_1": {
+                                "type": "string"
+                            },
+                            "address_line_2": {
+                                "type": "string"
+                            },
+                            "city": {
+                                "type": "string"
+                            },
+                            "state": {
+                                "type": "string"
+                            },
+                            "postal_code": {
+                                "type": "string"
+                            },
+                            "country": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "recipient_name",
+                            "phone",
+                            "address_line_1",
+                            "address_line_2",
+                            "city",
+                            "state",
+                            "postal_code",
+                            "country"
+                        ]
+                    },
+                    "tracking": {
+                        "type": "object",
+                        "properties": {
+                            "provider": {
+                                "type": "string"
+                            },
+                            "number": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "provider",
+                            "number"
+                        ]
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderItemResource"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "order_number",
+                    "status",
+                    "placed_at",
+                    "created_at",
+                    "cancelled_at",
+                    "cancellation_reason",
+                    "payment",
+                    "fare_breakup",
+                    "customer",
+                    "shipping_address",
+                    "tracking",
+                    "items"
+                ],
+                "title": "CustomerOrderResource"
+            },
+            "CustomerOrderSummaryResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Internal database id: shown for reference only; URLs take order_number."
+                    },
+                    "order_number": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "confirmed, processing, completed or cancelled (pending orders are not listed)."
+                    },
+                    "payment_status": {
+                        "type": "string",
+                        "description": "The newest payment attempt's status (paid for placed orders; refunded later)."
+                    },
+                    "placed_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The order date."
+                    },
+                    "total_amount": {
+                        "type": "string",
+                        "description": "Rupees as a string."
+                    },
+                    "item_count": {
+                        "type": "integer",
+                        "description": "Total units across all lines."
+                    },
+                    "first_item": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "The first line, for the card's picture and title (\"Amber & Sandalwood and 2 more\").",
+                        "properties": {
+                            "product_name": {
+                                "type": "string"
+                            },
+                            "variant_name": {
+                                "type": "string"
+                            },
+                            "photo_url": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "product_name",
+                            "variant_name",
+                            "photo_url"
+                        ]
+                    },
+                    "line_count": {
+                        "type": "integer",
+                        "description": "Number of lines; the card can say \"and N more\" with line_count - 1.",
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "id",
+                    "order_number",
+                    "status",
+                    "payment_status",
+                    "placed_at",
+                    "total_amount",
+                    "item_count",
+                    "first_item",
+                    "line_count"
+                ],
+                "title": "CustomerOrderSummaryResource"
+            },
             "CustomerProfileResource": {
                 "type": "object",
                 "properties": {
@@ -3525,6 +4087,64 @@
                     "sort_order"
                 ],
                 "title": "MediaResource"
+            },
+            "OrderItemResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Internal database id: shown for reference only."
+                    },
+                    "product_name": {
+                        "type": "string"
+                    },
+                    "variant_name": {
+                        "type": "string"
+                    },
+                    "sku": {
+                        "type": "string"
+                    },
+                    "photo_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The variant's cover photo at checkout; null when it had none."
+                    },
+                    "original_unit_price": {
+                        "type": "string",
+                        "description": "Rupees as strings."
+                    },
+                    "selling_unit_price": {
+                        "type": "string"
+                    },
+                    "quantity": {
+                        "type": "string"
+                    },
+                    "subtotal": {
+                        "type": "string"
+                    },
+                    "discount_amount": {
+                        "type": "string"
+                    },
+                    "total_amount": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "product_name",
+                    "variant_name",
+                    "sku",
+                    "photo_url",
+                    "original_unit_price",
+                    "selling_unit_price",
+                    "quantity",
+                    "subtotal",
+                    "discount_amount",
+                    "total_amount"
+                ],
+                "title": "OrderItemResource"
             },
             "ProductSort": {
                 "type": "string",

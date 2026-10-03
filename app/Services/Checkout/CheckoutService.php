@@ -149,7 +149,7 @@ final class CheckoutService
             $address->city,
             $address->state,
             $address->postal_code,
-            $address->country
+            $address->country,
         ];
 
         $orderAddress = [
@@ -160,15 +160,15 @@ final class CheckoutService
             $order->city,
             $order->state,
             $order->postal_code,
-            $order->country
+            $order->country,
         ];
 
         $cartLines = $review->cart->items
-            ->map(fn(CartItem $item) => "{$item->product_variant_id}:{$item->quantity}:{$item->productVariant->selling_price}")
+            ->map(fn (CartItem $item) => "{$item->product_variant_id}:{$item->quantity}:{$item->productVariant->selling_price}")
             ->sort()->values()->all();
 
         $orderLines = $order->items
-            ->map(fn(OrderItem $item) => "{$item->product_variant_id}:{$item->quantity}:{$item->selling_unit_price}")
+            ->map(fn (OrderItem $item) => "{$item->product_variant_id}:{$item->quantity}:{$item->selling_unit_price}")
             ->sort()->values()->all();
 
         return $addressSnapshot === $orderAddress && $cartLines === $orderLines;
@@ -187,7 +187,7 @@ final class CheckoutService
         $order = new Order;
         $order->forceFill([
             'customer_profile_id' => $profile->id,
-            'order_number' => OrderNumber::unique(now(), fn(string $orderNumber) => Order::where('order_number', $orderNumber)->exists()),
+            'order_number' => OrderNumber::unique(now(), fn (string $orderNumber) => Order::where('order_number', $orderNumber)->exists()),
             'status' => OrderStatus::Pending,
             'subtotal' => $subtotal,
             'discount_amount' => $discountAmount,
@@ -227,7 +227,7 @@ final class CheckoutService
 
         $payment = new Payment;
         $payment->forceFill([
-            'payment_number' => 'PAY' . strtoupper((string) Str::ulid()),
+            'payment_number' => 'PAY'.strtoupper((string) Str::ulid()),
             'provider' => 'razorpay',
             'status' => PaymentStatus::Pending,
             'amount' => $order->total_amount,
@@ -258,7 +258,7 @@ final class CheckoutService
                 customerName: $order->customer_name,
                 customerEmail: $order->customer_email,
                 customerPhone: $order->customer_phone,
-                callbackUrl: config('services.razorpay.callback_url') . '?' . http_build_query(['order' => $order->order_number]),
+                callbackUrl: config('services.razorpay.callback_url').'?'.http_build_query(['order' => $order->order_number]),
                 expiresAt: $expiresAt,
                 notes: ['order_number' => $order->order_number, 'payment_number' => $payment->payment_number],
             ));

@@ -7,8 +7,10 @@ use App\Http\Controllers\Api\Customer\Auth\SessionController;
 use App\Http\Controllers\Api\Customer\CartController;
 use App\Http\Controllers\Api\Customer\CartItemController;
 use App\Http\Controllers\Api\Customer\CheckoutController;
+use App\Http\Controllers\Api\Customer\OrderController;
 use App\Http\Controllers\Api\Customer\ProfileAvatarController;
 use App\Http\Controllers\Api\Customer\ProfileController;
+use App\Support\OrderNumber;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,7 +30,7 @@ use Illuminate\Support\Facades\Route;
 | - Signed out, throttled: /auth/register, login, forgot-password,
 |   reset-password. Sign-in accepts customer accounts only.
 | - Signed in (auth:api + scope:customer + role:customer + active + token.fresh): /auth/me, logout, password;
-|   /customer/profile, addresses, cart, checkout.
+|   /customer/profile, addresses, cart, checkout, orders.
 |
 | Endpoint list: docs/backend-srs.md, section 14.
 | Conventions: docs/backend-architecture.md, section 2.1.
@@ -89,6 +91,12 @@ Route::prefix('api/v1')->middleware('api')->name('customer.v1.')->group(function
             Route::prefix('checkout')->name('checkout.')->controller(CheckoutController::class)->group(function () {
                 Route::get('review', 'review')->name('review');
                 Route::post('/', 'store')->name('store');
+            });
+
+            // /customer/orders
+            Route::prefix('orders')->name('orders.')->controller(OrderController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('{order}', 'show')->where('order', OrderNumber::PATTERN)->name('show');
             });
         });
     });

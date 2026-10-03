@@ -12,7 +12,7 @@ class OrderNumberTest extends TestCase
     {
         $orderNumber = OrderNumber::unique(CarbonImmutable::parse('2026-10-03'), fn () => false);
 
-        $this->assertMatchesRegularExpression('/^AH-20261003-[2-9A-HJ-NP-Z]{6}$/', $orderNumber);
+        $this->assertMatchesRegularExpression('/^ORD-20261003-[2-9A-HJ-NP-Z]{6}$/', $orderNumber);
     }
 
     public function test_a_taken_number_is_drawn_again(): void

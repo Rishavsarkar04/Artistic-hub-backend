@@ -110,7 +110,7 @@ class CheckoutTest extends TestCase
         $response->assertJsonPath('data.order_number', $order->order_number)
             ->assertJsonPath('data.payment_number', $payment->payment_number)
             ->assertJsonPath('data.payment_url', $payment->payment_url);
-        $this->assertMatchesRegularExpression('/^AH-\d{8}-[2-9A-HJ-NP-Z]{6}$/', $order->order_number);
+        $this->assertMatchesRegularExpression('/^ORD-\d{8}-[2-9A-HJ-NP-Z]{6}$/', $order->order_number);
         $this->assertStringStartsWith('https://rzp.io/i/', $payment->payment_url);
 
         $this->assertSame(OrderStatus::Pending, $order->status);
