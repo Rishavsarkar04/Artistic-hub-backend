@@ -829,7 +829,7 @@ The cart at payment time is 3 × Amber + 1 Lavender; the order was for
 - **Admin order management:**
   - Built: the list (`GET /admin/orders`: placed orders only,
     `needs_review` per row) and the details (`GET /admin/orders/{order_number}`:
-    any status, with `review_reason` and every payment attempt); see
+    any status, with `review_reason`, the current `payment` and `payment_history`); see
     backend SRS BE-ORDER-02.
   - Not built yet: processing and completed status changes, and
     tracking.

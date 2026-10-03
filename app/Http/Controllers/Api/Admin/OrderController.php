@@ -38,7 +38,7 @@ class OrderController extends Controller
      *
      * Any order by its order number, in any status (also a pending or failed checkout a customer asks about).
      * Everything the customer sees, plus `review_reason` (why it needs attention, e.g. paid when stock was short),
-     * the customer's `reference_id`, and every payment attempt with its Razorpay ids. Unknown numbers return 404.
+     * the customer's `reference_id`, the current `payment` and the earlier attempts (`payment_history`) with their Razorpay ids. Unknown numbers return 404.
      */
     public function show(string $order): AdminOrderResource
     {

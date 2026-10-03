@@ -19,6 +19,7 @@ class AdminOrderResource extends JsonResource
     public function toArray(Request $request): array
     {
         $order = $this->resource;
+        $currentPayment = $order->latestPayment;
 
         return [
             /** Internal database id: shown for reference only; URLs take order_number. */
@@ -68,8 +69,12 @@ class AdminOrderResource extends JsonResource
                 'number' => $order->tracking_number,
             ],
             'items' => OrderItemResource::collection($order->items),
-            /** Every payment attempt, oldest first; the last one is the current payment_status. */
-            'payments' => AdminPaymentResource::collection($order->payments),
+            /** The current (newest) payment attempt: show this one. Its status is payment_status. Null only if none. */
+            'payment' => $currentPayment === null ? null : new AdminPaymentResource($currentPayment),
+            /** Earlier attempts (failed, cancelled or replaced), newest first; excludes `payment`. Empty when there were none. */
+            'payment_history' => AdminPaymentResource::collection(
+                $order->payments->reject(fn ($payment) => $payment->is($currentPayment))->sortByDesc('id')->values(),
+            ),
         ];
     }
 }

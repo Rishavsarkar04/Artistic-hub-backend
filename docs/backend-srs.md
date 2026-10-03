@@ -825,7 +825,8 @@ Implemented 2026-10-03 (admin order list):
   - `payment_status`;
   - `review_reason`;
   - `customer.reference_id`;
-  - `payments`: every attempt, oldest first, with `transaction_id`
+  - `payment`: the current (newest) attempt;
+  - `payment_history`: the earlier attempts only, newest first, with `transaction_id`
     (pay_…), `payment_link_id` (plink_…), `failed_at` and
     `failure_reason`. `gateway_response` is never returned.
 - Tracking (PATCH /admin/orders/{order_number}/tracking) is not built

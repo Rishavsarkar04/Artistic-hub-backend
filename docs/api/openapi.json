@@ -1534,7 +1534,7 @@
         "/admin/orders/{order}": {
             "get": {
                 "operationId": "admin.v1.orders.show",
-                "description": "Any order by its order number, in any status (also a pending or failed checkout a customer asks about).\nEverything the customer sees, plus `review_reason` (why it needs attention, e.g. paid when stock was short),\nthe customer's `reference_id`, and every payment attempt with its Razorpay ids. Unknown numbers return 404.",
+                "description": "Any order by its order number, in any status (also a pending or failed checkout a customer asks about).\nEverything the customer sees, plus `review_reason` (why it needs attention, e.g. paid when stock was short),\nthe customer's `reference_id`, the current `payment` and the earlier attempts (`payment_history`) with their Razorpay ids. Unknown numbers return 404.",
                 "summary": "Show an order",
                 "tags": [
                     "Order"
@@ -3552,9 +3552,20 @@
                             "$ref": "#/components/schemas/OrderItemResource"
                         }
                     },
-                    "payments": {
+                    "payment": {
+                        "anyOf": [
+                            {
+                                "description": "The current (newest) payment attempt: show this one. Its status is payment_status. Null only if none.",
+                                "$ref": "#/components/schemas/AdminPaymentResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "payment_history": {
                         "type": "array",
-                        "description": "Every payment attempt, oldest first; the last one is the current payment_status.",
+                        "description": "Earlier attempts (failed, cancelled or replaced), newest first; excludes `payment`. Empty when there were none.",
                         "items": {
                             "$ref": "#/components/schemas/AdminPaymentResource"
                         }
@@ -3575,7 +3586,8 @@
                     "shipping_address",
                     "tracking",
                     "items",
-                    "payments"
+                    "payment",
+                    "payment_history"
                 ],
                 "title": "AdminOrderResource"
             },

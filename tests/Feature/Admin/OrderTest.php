@@ -209,14 +209,14 @@ class OrderTest extends TestCase
             ->assertJsonPath('data.fare_breakup.total_amount', '1799.00')
             ->assertJsonPath('data.items.0.product_name', 'Amber & Sandalwood')
             ->assertJsonPath('data.items.0.quantity', 2)
-            ->assertJsonCount(2, 'data.payments')
-            ->assertJsonPath('data.payments.0.status', 'paid')
-            ->assertJsonPath('data.payments.0.transaction_id', 'pay_X')
-            ->assertJsonPath('data.payments.0.payment_link_id', 'plink_A')
-            ->assertJsonPath('data.payments.1.status', 'failed')
-            ->assertJsonPath('data.payments.1.failure_reason', 'Razorpay refused the payment link (HTTP 401)')
             ->assertJsonPath('data.payment_status', 'failed')
-            ->assertJsonMissingPath('data.payments.0.gateway_response');
+            ->assertJsonPath('data.payment.payment_number', $failed->payment_number)
+            ->assertJsonPath('data.payment.failure_reason', 'Razorpay refused the payment link (HTTP 401)')
+            ->assertJsonCount(1, 'data.payment_history')
+            ->assertJsonPath('data.payment_history.0.status', 'paid')
+            ->assertJsonPath('data.payment_history.0.transaction_id', 'pay_X')
+            ->assertJsonPath('data.payment_history.0.payment_link_id', 'plink_A')
+            ->assertJsonMissingPath('data.payment.gateway_response');
     }
 
     public function test_the_details_open_any_status_and_unknown_numbers_are_not_found(): void
@@ -224,7 +224,8 @@ class OrderTest extends TestCase
         $customer = User::factory()->customerWithProfile()->create();
         $pending = $this->order($customer, ['status' => OrderStatus::Pending]);
 
-        $this->getJson(self::ORDERS."/{$pending->order_number}")->assertOk()->assertJsonPath('data.status', 'pending')->assertJsonPath('data.placed_at', null);
+        $this->getJson(self::ORDERS."/{$pending->order_number}")->assertOk()->assertJsonPath('data.status', 'pending')->assertJsonPath('data.placed_at', null)
+            ->assertJsonPath('data.payment.status', 'pending')->assertJsonCount(0, 'data.payment_history');
         $this->getJson(self::ORDERS.'/ORD-20261003-ZZZZZZ')->assertNotFound();
         $this->getJson(self::ORDERS.'/not-an-order')->assertNotFound();
     }
