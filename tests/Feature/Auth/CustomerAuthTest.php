@@ -87,7 +87,7 @@ class CustomerAuthTest extends TestCase
         ] as [$email, $password]) {
             $this->postJson('/api/v1/auth/login', ['email' => $email, 'password' => $password])
                 ->assertUnauthorized()
-                ->assertExactJson(['message' => 'These credentials do not match our records.']);
+                ->assertExactJson(['message' => 'The email or password is incorrect.']);
         }
     }
 
@@ -98,7 +98,7 @@ class CustomerAuthTest extends TestCase
 
         $this->postJson('/api/v1/auth/login', ['email' => 'blocked@mail.com', 'password' => 'candles123'])
             ->assertForbidden()
-            ->assertJsonPath('message', 'This account is not active.');
+            ->assertJsonPath('message', 'This account has been deactivated. Please contact us for help.');
         $this->postJson('/api/v1/auth/login', ['email' => 'gone@mail.com', 'password' => 'candles123'])
             ->assertUnauthorized();
     }

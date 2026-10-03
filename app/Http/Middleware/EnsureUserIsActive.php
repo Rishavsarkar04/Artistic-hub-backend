@@ -12,7 +12,7 @@ class EnsureUserIsActive
     public function handle(Request $request, Closure $next): Response
     {
         if (! $request->user()?->isActive()) {
-            abort(Response::HTTP_FORBIDDEN, 'This account is not active.');
+            abort(Response::HTTP_FORBIDDEN, 'This account has been deactivated. Please contact us for help.');
         }
 
         return $next($request);

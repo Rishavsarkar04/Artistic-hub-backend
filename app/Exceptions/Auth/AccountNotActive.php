@@ -12,6 +12,6 @@ class AccountNotActive extends AuthorizationException
 {
     public function __construct()
     {
-        parent::__construct('This account is not active.');
+        parent::__construct('This account has been deactivated. Please contact us for help.');
     }
 }

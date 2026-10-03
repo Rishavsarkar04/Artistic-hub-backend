@@ -12,6 +12,6 @@ class InvalidCredentials extends AuthenticationException
 {
     public function __construct()
     {
-        parent::__construct('These credentials do not match our records.');
+        parent::__construct('The email or password is incorrect.');
     }
 }

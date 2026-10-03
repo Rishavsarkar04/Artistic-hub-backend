@@ -43,7 +43,7 @@ class AdminAuthTest extends TestCase
 
         $this->postJson('/api/v1/admin/auth/login', ['email' => 'ravi@mail.com', 'password' => 'candles123'])
             ->assertUnauthorized()
-            ->assertExactJson(['message' => 'These credentials do not match our records.']);
+            ->assertExactJson(['message' => 'The email or password is incorrect.']);
     }
 
     public function test_an_admin_token_cannot_reach_customer_routes(): void
