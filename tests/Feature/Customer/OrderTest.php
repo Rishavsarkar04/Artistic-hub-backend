@@ -32,6 +32,8 @@ class OrderTest extends TestCase
         config(['filesystems.media_disk' => 'media-test']);
         Storage::fake('media-test');
         config(['services.razorpay.base_url' => 'https://api.razorpay.test/v1']);
+        Http::preventStrayRequests();
+        Http::fake(['https://api.razorpay.test/v1/payment_links/*/cancel' => Http::response(['status' => 'cancelled'])]);
         Http::fake(['https://api.razorpay.test/v1/payment_links' => fn () => Http::response(['id' => 'plink_'.Str::random(14), 'short_url' => 'https://rzp.io/i/abc'])]);
 
         $this->customer = User::factory()->customerWithProfile()->create(['name' => 'Asha Rao']);

@@ -5,9 +5,9 @@ order and payment records it creates, how amounts are calculated, and what
 the payment result page reads. Decisions are dated; requirements stay in
 `backend-srs.md` (section 9), the schema in `database/er-diagram.md`.
 
-Status (2026-10-03): review, checkout (payment link) and order details are
-built. The Razorpay webhook that confirms payment is **not built yet**, so
-every order stays `pending` even after a successful payment.
+Status (2026-10-03): review, checkout (payment link), the Razorpay
+webhook that confirms payment, the order list and order details are all
+built.
 
 ## 1. The flow
 
@@ -18,7 +18,7 @@ every order stays `pending` even after a successful payment.
 | 3 | Review page | `GET /customer/checkout/review?address_id=` | Runs every checkout check, changes nothing |
 | 4 | Presses Pay | `POST /customer/checkout { address_id }` | Pending order + payment, Razorpay link, returns `payment_url` |
 | 5 | Pays | Redirect the browser to `payment_url` | — (Razorpay's hosted page) |
-| 6 | Payment succeeds | — | Webhook (to build): order confirmed, `placed_at` set, stock deducted once, paid quantities removed from the cart, one email |
+| 6 | Payment succeeds | — (Razorpay calls `POST /webhooks/razorpay`) | Order confirmed, `placed_at` set, stock deducted once, paid quantities removed from the cart, one email queued (section 10) |
 | 7 | Comes back | Result page calls `GET /customer/orders/{order_number}` | The order with its status and payment status |
 
 Decided 2026-10-03:
@@ -34,17 +34,20 @@ Decided 2026-10-03:
 
 | Piece | File |
 |---|---|
-| Routes | `routes/api/customer.php` (`checkout.review`, `checkout.store`, `orders.show`) |
+| Routes | `routes/api/customer.php` (`checkout.review`, `checkout.store`, `orders.index`, `orders.show`); `routes/api.php` (`webhooks.razorpay`) |
 | Checkout logic | `app/Services/Checkout/CheckoutService.php` (`review()`, `checkout()`) |
-| Order details | `app/Services/Orders/CustomerOrderService.php` (`getOrder()`) |
+| Order list and details | `app/Services/Orders/CustomerOrderService.php` (`listOrders()`, `getOrder()`) |
+| Webhook | `app/Http/Controllers/Api/Webhooks/RazorpayWebhookController.php` → `app/Integrations/Razorpay/RazorpayWebhook.php` (verify, map to `PaymentLinkEvent`) → `app/Services/Payments/PaymentCaptureService.php` |
+| Cancelling unpaid payments | `app/Services/Payments/PaymentCancellationService.php` (`cancelPending()`), used by `cancelOlderLinks()` and the expired/cancelled webhook |
+| Confirmation email | `app/Mail/OrderConfirmed.php`, `resources/views/mail/orders/confirmed.blade.php` |
 | Payment provider contract | `app/Contracts/PaymentGateway.php` (interface, `#[Bind(RazorpayGateway::class)]`) |
 | Razorpay calls | `app/Integrations/Razorpay/RazorpayGateway.php` (REST API via Laravel's HTTP client) |
 | Order number | `app/Support/OrderNumber.php` |
 | Money arithmetic | `app/Support/Money.php` (bcmath on strings, never floats) |
-| Responses | `CheckoutReviewResource`, `CheckoutPaymentResource`, `CustomerOrderResource`, `OrderItemResource` |
-| Errors | `app/Exceptions/Checkout/PaymentGatewayUnavailable.php` (503), `CheckoutInProgress.php` (409) |
+| Responses | `CheckoutReviewResource`, `CheckoutPaymentResource`, `CustomerOrderResource`, `CustomerOrderSummaryResource`, `OrderItemResource` |
+| Errors | `app/Exceptions/Checkout/PaymentGatewayUnavailable.php` (503), `CheckoutInProgress.php` (409), `InvalidWebhookSignature.php` (400) |
 | Settings | `config/services.php` → `razorpay` (see `setup.md`, section 5c) |
-| Tests | `tests/Feature/Customer/CheckoutReviewTest.php`, `CheckoutTest.php`, `OrderTest.php`, `tests/Unit/OrderNumberTest.php` |
+| Tests | `tests/Feature/Customer/CheckoutReviewTest.php`, `CheckoutTest.php`, `OrderTest.php`, `tests/Feature/Webhooks/RazorpayWebhookTest.php`, `tests/Unit/OrderNumberTest.php` |
 
 The payment gateway is the one interface in the codebase (decided
 2026-10-03). It is bound with Laravel's `#[Bind]` attribute, not in a
@@ -201,14 +204,24 @@ Not compared on purpose:
 - **Product and variant names:** a rename does not change what the
   customer pays or receives.
 
-### 4.5 Older pending orders
+### 4.5 Older pending orders (decided 2026-10-03)
 
-When the purchase changed, the earlier pending order is left as it is.
-Its link stays payable on Razorpay until it expires (at most 30 minutes),
-so a customer with the old tab still open could pay both.
+When the purchase changed, a new order is created. So that an old tab
+cannot charge the customer twice, `cancelOlderLinks()` runs after the new
+link exists:
 
-Open point for the webhook step: cancel older links when a new checkout
-starts, or handle the late payment in the webhook.
+1. Find the customer's other payments that are still `pending`, have a
+   link, and have not expired.
+2. Ask Razorpay to cancel each link (`PaymentGateway::cancelPaymentLink`).
+3. If Razorpay agrees: `PaymentCancellationService::cancelPending()`
+   marks the payment `cancelled` and its order `cancelled`, with the
+   reason "Replaced by a newer checkout."
+4. If Razorpay refuses (typically because that link was just paid): log
+   it and leave it alone. The webhook confirms that order.
+
+This is best effort and never fails the new checkout. If an older link is
+paid anyway, the webhook still confirms it: the money was taken, so it is
+a real order (section 10).
 
 ## 5. The order record
 
@@ -291,7 +304,7 @@ Frontend:
 | `confirmed` | Payment confirmed (webhook) |
 | `processing` | Being prepared (admin) |
 | `completed` | Delivered; `tracking_number` required |
-| `cancelled` | The payment could not be started, or cancelled later |
+| `cancelled` | The payment could not be started, the link expired or was cancelled unpaid, or it was replaced by a newer checkout (`cancellation_reason` says which) |
 
 ## 6. Amounts
 
@@ -431,6 +444,28 @@ The callback is only a way back to the shop. Razorpay adds its
 `razorpay_payment_link_status=paid`), but those never confirm an order:
 only the verified webhook does.
 
+### 7.4 Razorpay API calls and references
+
+| Call | Request | Razorpay docs |
+|---|---|---|
+| Create link (`createPaymentLink`) | `POST https://api.razorpay.com/v1/payment_links` | https://razorpay.com/docs/api/payments/payment-links/create-standard/ |
+| Cancel link (`cancelPaymentLink`) | `POST https://api.razorpay.com/v1/payment_links/{id}/cancel` (no body; `{id}` is `payments.payment_session_id`) | https://razorpay.com/docs/api/payments/payment-links/cancel-standard/ |
+| Webhook signature | HMAC-SHA256 of the raw body, `X-Razorpay-Signature` header | https://razorpay.com/docs/webhooks/validate-test/ |
+| Webhook payloads | `payment_link.paid`, `expired`, `cancelled` | https://razorpay.com/docs/webhooks/payloads/payment-links/ |
+
+All calls use basic auth with `RAZORPAY_KEY_ID:RAZORPAY_KEY_SECRET`. The
+URL is the same in test and live mode; the keys decide which.
+
+Cancel succeeds only while the link is `created` (unpaid). Razorpay
+answers 400 when the link:
+- is already paid or partially paid;
+- has already expired or been cancelled;
+- does not exist, or belongs to another account.
+
+It may also answer 400 "an update is already in progress" while it holds
+a short lock on the link. `cancelOlderLinks()` logs any of these and
+moves on (section 4.5).
+
 ## 8. Order details and the result page: `GET /customer/orders/{order_number}`
 
 Razorpay returns the customer to the frontend result page with
@@ -482,7 +517,8 @@ What the result page shows:
 | `cancelled` | `failed` | Payment could not be started; offer Pay again from the cart |
 | `pending` | `pending`, `can_pay` false | Link expired; offer Pay again from the cart |
 
-Until the webhook is built, every order stays `pending`. The
+Razorpay usually calls the webhook within seconds, but it can arrive
+after the customer is back, so poll while both are `pending`. The
 `razorpay_payment_link_status=paid` query parameter may be used for the
 "confirming" message, never as proof of payment.
 
@@ -520,22 +556,253 @@ Each row is a summary for an order card:
   Sandalwood and N more" with `line_count − 1`.
 - **Details:** open the order by `order_number` for everything else.
 
-Until the webhook is built, no order gets `placed_at`, so **the list is
-always empty**. Tests set `placed_at` and the statuses directly to stand
-in for the webhook.
+## 10. Razorpay webhook: `POST /api/v1/webhooks/razorpay`
 
-## 10. Still to build
+Built 2026-10-03. Razorpay calls it; the frontend never does. It is the
+only thing that confirms an order: the browser redirect never does. It is
+in `routes/api.php` with no sign-in, and is left out of the API docs
+(`#[ExcludeRouteFromDocs]`).
 
-- **The webhook** (`payment_link.paid` / `payment.captured`, signature
-  verified with `RAZORPAY_WEBHOOK_SECRET`). It should:
-  - mark the payment `paid` (`transaction_id`, `method`, `paid_at`);
-  - mark the order `confirmed` and set `placed_at`;
-  - deduct stock once;
-  - remove the paid quantities from the cart;
-  - send one confirmation email.
+### 10.1 Verification
 
-  It must be idempotent: Razorpay retries webhooks.
-- **Open decisions:**
-  - A payment confirmed after the stock ran out: refund it, or accept the
-    order anyway?
-  - An older pending link paid after a newer checkout (section 4.5).
+Razorpay signs the raw request body with HMAC-SHA256, using the webhook
+secret set in its dashboard, and sends the result in the
+`X-Razorpay-Signature` header. `RazorpayWebhook::verify()` recomputes it
+with `RAZORPAY_WEBHOOK_SECRET` and compares with `hash_equals`.
+
+- **Wrong or missing signature, or no secret configured:** 400, and
+  nothing changes.
+- **Raw body:** the body is checked exactly as received. Decoding and
+  re-encoding the JSON would change it.
+
+### 10.2 Events handled
+
+Enable these three events on the webhook in the Razorpay dashboard:
+
+| Event | What happens |
+|---|---|
+| `payment_link.paid` | Capture (section 10.3) |
+| `payment_link.expired` | `PaymentCancellationService::cancelPending()`: if the payment is still `pending`, payment `cancelled`, and the order `cancelled` (if still pending) with "The payment link expired." |
+| `payment_link.cancelled` | Same, with "The payment link was cancelled." |
+
+- **Other events,** and payloads missing the fields we need, are answered
+  200 and ignored.
+- **Links we did not create** are answered 200, logged, and ignored. A
+  link is ours when `payment_session_id` matches the link id and the
+  link's `reference_id` equals our `payment_number`.
+- **200 tells Razorpay to stop retrying.** Any unexpected error is a 500,
+  and Razorpay retries it.
+
+`RazorpayWebhook::toEvent()` maps the payload to a `PaymentLinkEvent` DTO:
+
+| DTO field | Source |
+|---|---|
+| `type` | The event name |
+| `linkId` | `payload.payment_link.entity.id` |
+| `referenceId` | `payload.payment_link.entity.reference_id` |
+| `paymentId` | `payload.payment.entity.id` (only for `paid`; required) |
+| `method` | `payload.payment.entity.method` (only for `paid`) |
+
+`PaymentCaptureService` only ever sees this DTO, never the HTTP request.
+
+### 10.3 Capture (`payment_link.paid`)
+
+Inside one transaction, locking in the same order as checkout and the
+cart (profile, then payment, order, and variants by id):
+
+1. **Already `paid`?** Do nothing. Razorpay retries webhooks, so a repeat
+   is expected, and stock, cart and email happen exactly once.
+2. **Deduct stock** for each line whose variant still exists, down to a
+   floor of 0.
+3. **Remove the paid quantities from the cart.** Each cart line is reduced
+   by the paid quantity and deleted at zero. Items added after checkout
+   stay.
+4. **Payment:** `paid`, with `transaction_id` (the Razorpay payment id),
+   `method` (`card`, `upi`, `netbanking`, `wallet` or `emi`; null for
+   anything else), `paid_at`, and the payment entity added to
+   `gateway_response` under `payment`.
+5. **Order:** `confirmed`, `placed_at = now`. `cancelled_at` and
+   `cancellation_reason` are cleared, because an order cancelled as
+   "replaced by a newer checkout" can still be paid if the cancel lost
+   the race (section 4.5).
+
+After the commit, `OrderConfirmed` is queued to `customer_email`.
+
+The paid amount is not re-checked (decided 2026-10-03): we set the link's
+amount ourselves and `accept_partial` is false, so Razorpay can only
+collect exactly that amount.
+
+### 10.4 Paid when stock ran short (decided 2026-10-03)
+
+There is no stock reservation, so the stock can run out between Pay and
+the payment. The order is still confirmed, because the customer paid:
+
+- **Stock** is deducted down to 0.
+- **The order** gets a `review_reason`, for example "Paid when stock was
+  short: Amber & Sandalwood (Small) ordered 3, had 1. Restock or refund."
+- **An admin** restocks or refunds by hand (refunds are not automated).
+
+`review_reason` is an admin-only column. It is never shown to customers,
+and is null when there is nothing to check.
+
+### 10.5 Confirmation email
+
+`App\Mail\OrderConfirmed` is queued (`ShouldQueue`), so a queue worker
+must run (`php artisan queue:work`; `setup.md`, section 5c). It is built
+only from the order's snapshots:
+- the order number;
+- the items with quantity and amount, and the total ("Prices include
+  GST");
+- the delivery address;
+- a "View your order" button linking to
+  `FRONTEND_URL/account/orders/{order_number}`.
+
+Locally `MAIL_MAILER=log`, so it is written to
+`storage/logs/laravel.log`.
+
+## 11. Scenarios: what the data looks like
+
+One example throughout. Asha's cart holds 2 × Amber & Sandalwood (Small):
+variant 14, ₹899.50 each, stock 10. The total is **1799.00**, and links
+expire after 30 minutes. Only the columns that change are shown.
+`gateway_response` is left out.
+
+### 11.1 Paid normally
+
+**10:00, Pay pressed** (`POST /customer/checkout` → 201)
+
+| Table | Data |
+|---|---|
+| orders | `ORD-20261003-7K2Q9M`, status `pending`, total `1799.00`, placed_at null |
+| order_items | Amber & Sandalwood / Small, qty 2, selling_unit_price `899.50`, total `1799.00` |
+| payments | `PAY01K6…`, status `pending`, payment_session_id `plink_A`, payment_url `https://rzp.io/i/A`, expires_at 10:30, transaction_id null, method null |
+| Stock / cart | Stock 10; cart 2 × Amber (unchanged) |
+
+**10:05, paid by UPI** (webhook `payment_link.paid`)
+
+| Table | Data |
+|---|---|
+| orders | status `confirmed`, placed_at 10:05 |
+| payments | status `paid`, transaction_id `pay_X`, method `upi`, paid_at 10:05 |
+| Stock / cart | Stock **8**; cart **empty** |
+| Email | `OrderConfirmed` queued once |
+
+The API now returns: result page `status: confirmed`, `payment.status:
+paid`, `can_pay: false`, `payment_url: null`. The order appears in
+`GET /customer/orders`.
+
+### 11.2 Pay pressed twice (same cart and address)
+
+No new rows. The second call answers **200** with the same
+`order_number` and `payment_url`, and Razorpay is not called again.
+
+### 11.3 Card declined, then paid by UPI
+
+| When | Data |
+|---|---|
+| After the decline | Nothing changes. The order and payment stay `pending`, and `can_pay` is still true; the customer retries on the same Razorpay page. Razorpay's `payment.failed` is ignored. |
+| After the UPI payment | Same as 11.1 at 10:05 |
+
+### 11.4 Abandoned: link expires unpaid
+
+**10:30, webhook `payment_link.expired`**
+
+| Table | Data |
+|---|---|
+| orders | status `cancelled`, cancelled_at 10:30, cancellation_reason "The payment link expired.", placed_at null |
+| payments | status `cancelled` |
+| Stock / cart | Stock 10; cart 2 × Amber (unchanged) |
+
+The API returns `cancelled` / `cancelled`, with `can_pay: false`. The
+order is not in the order list. Pressing Pay again creates a new order.
+
+If the webhook never arrives, both stay `pending`, but `can_pay` turns
+false at 10:30.
+
+### 11.5 Razorpay down when Pay is pressed
+
+`POST /customer/checkout` answers **503**.
+
+| Table | Data |
+|---|---|
+| orders | status `cancelled`, cancelled_at 10:00, cancellation_reason "The payment could not be started." |
+| payments | status `failed`, failed_at 10:00, failure_reason "Razorpay refused the payment link (HTTP 401): …", payment_session_id null, payment_url null |
+| Stock / cart | Unchanged |
+
+Pressing Pay again creates a new order and payment.
+
+### 11.6 Cart changed, then Pay again
+
+At 10:00 order 1 is created with `plink_A`. The customer adds a third
+Amber and presses Pay again at 10:10:
+
+| Row | Data |
+|---|---|
+| Order 1 | status `cancelled`, cancellation_reason "Replaced by a newer checkout." (link A cancelled on Razorpay) |
+| Payment 1 | status `cancelled` |
+| Order 2 | status `pending`, total `2698.50` |
+| Payment 2 | status `pending`, `plink_B`, expires 10:40 |
+
+Razorpay then sends `payment_link.cancelled` for A. Payment 1 is no
+longer pending, so nothing changes.
+
+### 11.7 The old tab pays at the same moment
+
+As in 11.6, but link A was paid just before the cancel. Razorpay refuses
+the cancel ("already paid"); this is logged, and order 1 stays `pending`.
+The webhook then confirms order 1:
+
+| Row | Data |
+|---|---|
+| Order 1 | `confirmed`, placed_at set; cancelled_at and cancellation_reason cleared if they had been set |
+| Payment 1 | `paid` |
+| Stock / cart | Stock 10 → 8; 2 Ambers leave the cart (1 left) |
+| Order 2 / payment 2 | Still `pending` with link B. If that is paid too, it becomes a second confirmed order. Both were paid, so both are real. |
+
+### 11.8 Paid when stock ran short
+
+Between 10:00 and 10:05 another customer buys 9, so stock is 1 when the
+payment arrives.
+
+| Table | Data |
+|---|---|
+| orders | `confirmed`, placed_at 10:05, review_reason "Paid when stock was short: Amber & Sandalwood (Small) ordered 2, had 1. Restock or refund." |
+| payments | `paid` |
+| Stock / cart | Stock **0** (never negative); cart empty |
+| Email | Sent as normal |
+
+### 11.9 Razorpay sends the same webhook twice
+
+The payment is already `paid`, so nothing changes: stock stays 8, the
+cart is not touched again, and no second email is sent. The answer is 200.
+
+### 11.10 Link cancelled by hand in the Razorpay dashboard
+
+Webhook `payment_link.cancelled`: like 11.4, but with the reason "The
+payment link was cancelled."
+
+### 11.11 Items added to the cart after Pay
+
+The cart at payment time is 3 × Amber + 1 Lavender; the order was for
+2 × Amber. After the webhook, the cart is 1 × Amber + 1 Lavender.
+
+### 11.12 Summary
+
+| Scenario | orders.status | payments.status | placed_at | In order list | can_pay | Stock | Cart | Email |
+|---|---|---|---|---|---|---|---|---|
+| Waiting for payment | pending | pending | null | No | true (until expiry) | unchanged | unchanged | — |
+| Paid | confirmed | paid | set | Yes | false | − qty | − paid qty | once |
+| Paid, stock short | confirmed (+ review_reason) | paid | set | Yes | false | 0 | − paid qty | once |
+| Link expired | cancelled ("expired") | cancelled | null | No | false | unchanged | unchanged | — |
+| Cancelled in dashboard | cancelled ("was cancelled") | cancelled | null | No | false | unchanged | unchanged | — |
+| Replaced by newer checkout | cancelled ("Replaced…") | cancelled | null | No | false | unchanged | unchanged | — |
+| Razorpay down at Pay | cancelled ("could not be started") | failed | null | No | false | unchanged | unchanged | — |
+
+## 12. Not built yet
+
+- **Admin order management:** list and detail, processing and completed
+  status changes, tracking, and showing `review_reason`.
+- **Refunds:** done by hand in the Razorpay dashboard for now.
+- **Expired pending orders:** when Razorpay sends `payment_link.expired`
+  they are cancelled. If that event is missed, the order stays `pending`
+  with `can_pay` false; a scheduled cleanup could cancel those.

@@ -563,7 +563,7 @@ sent by the client.
 | 4 | Pay & Place Order | POST /customer/checkout { address_id } | Built 2026-10-03. Runs the review checks (same 422s), calculates the total itself from the cart, creates a pending order (customer, address and item snapshots) and a pending payment, then creates a Razorpay **Payment Link** for exactly that total. Returns { order_number, payment_number, total_amount, currency, payment_url, expires_at }: 201 for a new order, 200 when Pay is pressed again for the same cart and address while the link is still payable (same link, no new order). 409 while the same checkout is still waiting for Razorpay; 503 when Razorpay cannot create the link (the payment is marked failed, the order cancelled; pressing Pay again starts a new order). The cart and stock are not changed |
 | 4a | | | Razorpay link: amount in paise, `accept_partial` false, `reference_id` = payment_number, customer name/email/phone, Razorpay notifications off, expires after `RAZORPAY_LINK_EXPIRY_MINUTES` (30), `callback_url` = `RAZORPAY_CALLBACK_URL?order=<order_number>` (GET; Razorpay adds its `razorpay_*` query parameters). The callback is only a return to the shop: it never confirms the order |
 | 5 | Pays on Razorpay | Redirect to payment_url | — |
-| 6 | Payment succeeds | — | Verified webhook: order confirmed, stock deducted once, paid quantities removed from the cart, one confirmation email |
+| 6 | Payment succeeds | — (Razorpay calls POST /webhooks/razorpay) | Built 2026-10-03. Signature-verified webhook (`payment_link.paid`): payment paid, order confirmed with `placed_at`, stock deducted once, paid quantities removed from the cart, one confirmation email queued. Repeated events change nothing. `payment_link.expired` / `cancelled` cancel a still-pending order |
 | 7 | Returns to the shop | GET /customer/orders/{order_number} | Built 2026-10-03 (replaces the separate status endpoint). Razorpay redirects to the frontend result page with `?order=<order_number>`; the page calls this. Returns the order in any status (pending, confirmed, cancelled…) with `status`, `payment` (newest attempt: `status`, `can_pay`, `payment_url` while payable, `expires_at`, `paid_at`), `fare_breakup`, customer, shipping address and item snapshots. Stays `pending` until the webhook (step 6) confirms the payment, so the page polls while `status` is pending and `payment.status` is pending. Another customer's order number is 404 |
 
 Why no expected total: the total is never taken from the client, and the
@@ -580,10 +580,16 @@ order); no stock reservation during payment (stock is checked at checkout
 and deducted once when the payment is confirmed). `placed_at` stays null
 until the payment is confirmed.
 
-Still to build (step 6): the verified Razorpay webhook. Open points for that step: a payment confirmed when stock has
-since run out (refund or accept), and an older pending link paid after a
-newer checkout (a new checkout leaves earlier pending links payable until
-they expire).
+Decided 2026-10-03 for step 6:
+- **A payment confirmed when stock has since run out:** the order is
+  still confirmed (the customer paid), stock is deducted down to 0, and
+  the order gets an admin-only `review_reason` so an admin restocks or
+  refunds by hand.
+- **Older links:** a new checkout cancels the customer's older payable
+  links on Razorpay (best effort). If an older link is paid anyway, that
+  order is confirmed.
+
+Details: `docs/checkout-and-payments.md`, sections 4.5 and 10.
 
 ### BE-CHECKOUT-01: Review (superseded by the agreed flow above)
 

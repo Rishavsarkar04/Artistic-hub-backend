@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Shop\ProductVariantController;
+use App\Http\Controllers\Api\Webhooks\RazorpayWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,5 +30,10 @@ Route::prefix('api/v1')->middleware('api')->name('api.v1.')->group(function () {
     Route::prefix('shop')->name('shop.')->group(function () {
         Route::get('product-variants', [ProductVariantController::class, 'index'])->name('product-variants.index');
         Route::get('product-variants/{variant}', [ProductVariantController::class, 'show'])->whereUlid('variant')->name('product-variants.show');
+    });
+
+    // Provider callbacks: no session, authenticated by the provider's signature.
+    Route::prefix('webhooks')->name('webhooks.')->group(function () {
+        Route::post('razorpay', RazorpayWebhookController::class)->name('razorpay');
     });
 });

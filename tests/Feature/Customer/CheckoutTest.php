@@ -38,6 +38,9 @@ class CheckoutTest extends TestCase
     /** What the fake Razorpay answers instead of a created link: a failed response or a thrown exception. */
     private mixed $razorpayFailure = null;
 
+    /** What the fake Razorpay answers when asked to cancel a link, instead of success. */
+    private mixed $cancelFailure = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -66,6 +69,8 @@ class CheckoutTest extends TestCase
 
     private function fakeRazorpay(): void
     {
+        Http::preventStrayRequests();
+        Http::fake([self::LINKS.'/*/cancel' => fn () => $this->cancelFailure ?? Http::response(['status' => 'cancelled'])]);
         Http::fake([self::LINKS => fn () => match (true) {
             $this->razorpayFailure instanceof \Throwable => throw $this->razorpayFailure,
             $this->razorpayFailure !== null => $this->razorpayFailure,
@@ -182,6 +187,38 @@ class CheckoutTest extends TestCase
         $this->assertNotSame($second, $third);
 
         $this->assertDatabaseCount('orders', 3);
+    }
+
+    public function test_a_new_checkout_cancels_the_older_payable_link(): void
+    {
+        $variant = $this->variant(['stock' => 5]);
+        $this->add($variant, 1);
+        $older = $this->checkout()->assertCreated()->json('data');
+        $olderLinkId = Payment::where('payment_number', $older['payment_number'])->value('payment_session_id');
+
+        $this->add($variant, 1);
+        $newer = $this->checkout()->assertCreated()->json('data');
+
+        Http::assertSent(fn (Request $request) => $request->url() === self::LINKS."/{$olderLinkId}/cancel");
+        $olderOrder = Order::where('order_number', $older['order_number'])->sole();
+        $this->assertSame(OrderStatus::Cancelled, $olderOrder->status);
+        $this->assertSame('Replaced by a newer checkout.', $olderOrder->cancellation_reason);
+        $this->assertSame(PaymentStatus::Cancelled, $olderOrder->latestPayment->status);
+        $this->assertSame(OrderStatus::Pending, Order::where('order_number', $newer['order_number'])->sole()->status);
+    }
+
+    public function test_an_older_link_razorpay_will_not_cancel_is_left_for_the_webhook(): void
+    {
+        $variant = $this->variant(['stock' => 5]);
+        $this->add($variant, 1);
+        $older = $this->checkout()->json('data.order_number');
+
+        // e.g. it was paid a moment ago: Razorpay refuses to cancel a paid link.
+        $this->cancelFailure = Http::response(['error' => ['description' => 'Payment link is already paid']], 400);
+        $this->add($variant, 1);
+        $this->checkout()->assertCreated();
+
+        $this->assertSame(OrderStatus::Pending, Order::where('order_number', $older)->sole()->status);
     }
 
     public function test_a_checkout_still_waiting_for_razorpay_is_reported_as_in_progress(): void

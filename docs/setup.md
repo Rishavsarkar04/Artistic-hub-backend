@@ -172,11 +172,31 @@ RAZORPAY_LINK_EXPIRY_MINUTES=30
 
 - `RAZORPAY_CALLBACK_URL` is the frontend page Razorpay returns the
   customer to; the backend adds `?order=<order_number>`. It only shows the
-  result: the order is confirmed by the webhook (not built yet), never by
-  this redirect.
+  result: the order is confirmed by the webhook, never by this redirect.
+- `FRONTEND_URL` (top of `.env`) is the storefront, used for the "View
+  your order" link in the confirmation email.
 - `RAZORPAY_LINK_EXPIRY_MINUTES` must be at least 15 (Razorpay's minimum).
 - Without keys, `POST /customer/checkout` answers 503 and cancels the
   pending order. Tests never call Razorpay (they use `Http::fake`).
+
+**Webhook (confirms payments).** In the Razorpay dashboard (test mode),
+go to Accounts & Settings → Webhooks → Add New Webhook:
+- **URL:** `https://<your-api-host>/api/v1/webhooks/razorpay`. Razorpay
+  must be able to reach it. Locally, expose `php artisan serve` with a
+  tunnel such as ngrok, or orders stay `pending`.
+- **Secret:** any long random string. Put the same value in
+  `RAZORPAY_WEBHOOK_SECRET`. Without it every webhook is refused (400).
+- **Events:** `payment_link.paid`, `payment_link.expired`,
+  `payment_link.cancelled`.
+
+**Queue worker (confirmation emails).** The confirmation email is queued
+(`QUEUE_CONNECTION=database`), so keep a worker running:
+
+```sh
+php artisan queue:work
+```
+
+With `MAIL_MAILER=log` the email is written to `storage/logs/laravel.log`.
 
 ## 6. Create the first admin
 

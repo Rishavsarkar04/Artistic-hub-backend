@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Services\Cart\CartService;
+use App\Services\Payments\PaymentCancellationService;
 use App\Support\Money;
 use App\Support\OrderNumber;
 use Carbon\CarbonImmutable;
@@ -39,6 +40,7 @@ final class CheckoutService
     public function __construct(
         private CartService $cartService,
         private PaymentGateway $paymentGateway,
+        private PaymentCancellationService $paymentCancellationService,
     ) {}
 
     /**
@@ -102,7 +104,10 @@ final class CheckoutService
             return $payment;
         }
 
-        return $this->createPaymentLink($payment);
+        $payment = $this->createPaymentLink($payment);
+        $this->cancelOlderLinks($profile, $payment);
+
+        return $payment;
     }
 
     /**
@@ -289,6 +294,33 @@ final class CheckoutService
         ])->save();
 
         return $payment;
+    }
+
+    /**
+     * Cancels the customer's other links that can still be paid, so an old tab cannot charge them twice.
+     * Best effort: when Razorpay refuses (typically because that link was just paid), it is left alone and
+     * the webhook confirms that order. Runs after the new link exists, outside any transaction.
+     */
+    private function cancelOlderLinks(CustomerProfile $profile, Payment $newPayment): void
+    {
+        $olderPayments = Payment::whereKeyNot($newPayment->id)
+            ->whereHas('order', fn ($query) => $query->where('customer_profile_id', $profile->id))
+            ->where('status', PaymentStatus::Pending)
+            ->whereNotNull('payment_session_id')
+            ->where('expires_at', '>', now())
+            ->get();
+
+        foreach ($olderPayments as $olderPayment) {
+            try {
+                $this->paymentGateway->cancelPaymentLink($olderPayment->payment_session_id);
+            } catch (PaymentGatewayUnavailable $exception) {
+                report($exception);
+
+                continue;
+            }
+
+            $this->paymentCancellationService->cancelPending($olderPayment, 'Replaced by a newer checkout.');
+        }
     }
 
     /** Another customer's address gets the same message as a missing one. */

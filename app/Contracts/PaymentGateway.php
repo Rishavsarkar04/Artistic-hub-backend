@@ -22,4 +22,11 @@ interface PaymentGateway
      * @throws PaymentGatewayUnavailable when the provider cannot be reached or refuses the request
      */
     public function createPaymentLink(PaymentLinkRequest $request): CreatedPaymentLink;
+
+    /**
+     * Cancels a payment link so it can no longer be paid. Fails when it was already paid or expired.
+     *
+     * @throws PaymentGatewayUnavailable when the provider cannot be reached or refuses the request
+     */
+    public function cancelPaymentLink(string $linkId): void;
 }

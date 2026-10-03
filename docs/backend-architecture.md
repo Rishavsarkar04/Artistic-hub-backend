@@ -287,7 +287,7 @@ app/
 ├── Integrations/
 │   └── Razorpay/
 │       ├── RazorpayGateway.php
-│       └── RazorpayWebhookVerifier.php
+│       └── RazorpayWebhook.php   (verify signature, map to PaymentLinkEvent)
 ├── Jobs/
 │   ├── SendOrderConfirmation.php
 │   └── ReconcilePaymentAttempt.php
@@ -639,11 +639,17 @@ returns DTOs (`PaymentLinkRequest`, `CreatedPaymentLink`) and turns every
 provider error into `PaymentGatewayUnavailable` (503). Add a method to the
 interface only when a service needs it.
 
-Expose only the operations actually required, such as:
+Expose only the operations actually required. As built (2026-10-03):
 - createPaymentLink
-- fetchPayment
-- fetchPaymentLink
-- cancelPaymentLink
+- cancelPaymentLink (a new checkout cancels the customer's older links)
+
+Add fetchPayment / fetchPaymentLink only when reconciliation needs them.
+
+Webhooks are verified and mapped by `RazorpayWebhook`
+(`app/Integrations/Razorpay/RazorpayWebhook.php`): `verify(rawBody,
+signature)` checks the HMAC, and `toEvent(body)` returns a
+`PaymentLinkEvent` DTO. `PaymentCaptureService` applies it
+(`docs/checkout-and-payments.md`, section 10).
 
 Read credentials from `config/services.php` (backed by `.env`) inside the
 gateway, not in callers.

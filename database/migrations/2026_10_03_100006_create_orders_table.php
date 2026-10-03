@@ -41,6 +41,9 @@ return new class extends Migration
             $table->string('tracking_number')->nullable();
             $table->text('notes')->nullable();
             $table->string('cancellation_reason')->nullable();
+            // Why an admin should look at this order, e.g. it was paid when stock was short (no
+            // reservation). Null when there is nothing to check. Never shown to the customer.
+            $table->text('review_reason')->nullable();
 
             // Set when the payment is confirmed (status becomes confirmed): a pending checkout is not a
             // placed order, so created_at is when Pay was pressed and placed_at is the order date shown.

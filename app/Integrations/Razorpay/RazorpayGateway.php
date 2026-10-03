@@ -67,6 +67,29 @@ final class RazorpayGateway implements PaymentGateway
         );
     }
 
+    /**
+     * @see https://razorpay.com/docs/api/payments/payment-links/cancel-standard/
+     *
+     * @throws PaymentGatewayUnavailable
+     */
+    public function cancelPaymentLink(string $linkId): void
+    {
+        try {
+            $response = $this->client()->post('payment_links/'.rawurlencode($linkId).'/cancel');
+        } catch (ConnectionException $exception) {
+            throw new PaymentGatewayUnavailable('Could not reach Razorpay: '.$exception->getMessage(), $exception);
+        }
+
+        if ($response->failed()) {
+            throw new PaymentGatewayUnavailable(sprintf(
+                'Razorpay refused to cancel payment link %s (HTTP %d): %s',
+                $linkId,
+                $response->status(),
+                $response->json('error.description') ?? $response->body(),
+            ));
+        }
+    }
+
     private function client(): PendingRequest
     {
         return Http::baseUrl(config('services.razorpay.base_url'))
