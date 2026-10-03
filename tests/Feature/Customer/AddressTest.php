@@ -75,7 +75,7 @@ class AddressTest extends TestCase
         $old = CustomerAddress::factory()->default()->create(['customer_profile_id' => $this->profileId()]);
         $address = CustomerAddress::factory()->create(['customer_profile_id' => $this->profileId()]);
 
-        $this->putJson("/api/v1/customer/addresses/{$address->public_id}", $this->validAddress(['is_default' => true]))
+        $this->putJson("/api/v1/customer/addresses/{$address->reference_id}", $this->validAddress(['is_default' => true]))
             ->assertOk()
             ->assertJsonPath('data.is_default', true);
 
@@ -87,7 +87,7 @@ class AddressTest extends TestCase
     {
         $default = CustomerAddress::factory()->default()->create(['customer_profile_id' => $this->profileId()]);
 
-        $this->putJson("/api/v1/customer/addresses/{$default->public_id}", $this->validAddress(['is_default' => false]))
+        $this->putJson("/api/v1/customer/addresses/{$default->reference_id}", $this->validAddress(['is_default' => false]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors('is_default');
 
@@ -99,7 +99,7 @@ class AddressTest extends TestCase
         $default = CustomerAddress::factory()->default()->create(['customer_profile_id' => $this->profileId()]);
         $other = CustomerAddress::factory()->create(['customer_profile_id' => $this->profileId()]);
 
-        $this->putJson("/api/v1/customer/addresses/{$other->public_id}", $this->validAddress())->assertOk()->assertJsonPath('data.is_default', false);
+        $this->putJson("/api/v1/customer/addresses/{$other->reference_id}", $this->validAddress())->assertOk()->assertJsonPath('data.is_default', false);
         $this->assertTrue($default->fresh()->is_default);
     }
 
@@ -113,9 +113,9 @@ class AddressTest extends TestCase
         $this->getJson('/api/v1/customer/addresses')
             ->assertOk()
             ->assertJsonCount(3, 'data')
-            ->assertJsonPath('data.0.public_id', $default->public_id)
-            ->assertJsonPath('data.1.public_id', $newer->public_id)
-            ->assertJsonPath('data.2.public_id', $older->public_id);
+            ->assertJsonPath('data.0.reference_id', $default->reference_id)
+            ->assertJsonPath('data.1.reference_id', $newer->reference_id)
+            ->assertJsonPath('data.2.reference_id', $older->reference_id);
     }
 
     public function test_setting_a_new_default_leaves_exactly_one(): void
@@ -123,7 +123,7 @@ class AddressTest extends TestCase
         $first = CustomerAddress::factory()->default()->create(['customer_profile_id' => $this->profileId()]);
         $second = CustomerAddress::factory()->create(['customer_profile_id' => $this->profileId()]);
 
-        $this->patchJson("/api/v1/customer/addresses/{$second->public_id}/default")
+        $this->patchJson("/api/v1/customer/addresses/{$second->reference_id}/default")
             ->assertOk()
             ->assertJsonPath('data.is_default', true);
 
@@ -135,7 +135,7 @@ class AddressTest extends TestCase
     {
         $address = CustomerAddress::factory()->default()->create(['customer_profile_id' => $this->profileId()]);
 
-        $this->putJson("/api/v1/customer/addresses/{$address->public_id}", $this->validAddress(['city' => 'Mysuru']))
+        $this->putJson("/api/v1/customer/addresses/{$address->reference_id}", $this->validAddress(['city' => 'Mysuru']))
             ->assertOk()
             ->assertJsonPath('data.city', 'Mysuru')
             ->assertJsonPath('data.is_default', true);
@@ -145,8 +145,8 @@ class AddressTest extends TestCase
     {
         $theirs = CustomerAddress::factory()->default()->create();
 
-        $this->putJson("/api/v1/customer/addresses/{$theirs->public_id}", $this->validAddress())->assertNotFound();
-        $this->patchJson("/api/v1/customer/addresses/{$theirs->public_id}/default")->assertNotFound();
+        $this->putJson("/api/v1/customer/addresses/{$theirs->reference_id}", $this->validAddress())->assertNotFound();
+        $this->patchJson("/api/v1/customer/addresses/{$theirs->reference_id}/default")->assertNotFound();
 
         $this->assertNotSame('Bengaluru', $theirs->fresh()->city);
         $this->assertTrue($theirs->fresh()->is_default);

@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Enums\Role;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\UserStatus;
-use App\Models\Concerns\HasPublicId;
+use App\Models\Concerns\HasReferenceId;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -31,7 +31,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable implements OAuthenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasPublicId, HasRoles, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, HasReferenceId, HasRoles, Notifiable, SoftDeletes;
 
     /** Spatie role guard name; see Role::GUARD for why it is pinned. */
     protected string $guard_name = Role::GUARD;

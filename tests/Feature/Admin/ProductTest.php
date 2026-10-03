@@ -32,17 +32,17 @@ class ProductTest extends TestCase
     {
         return $this->post('/api/v1/admin/uploads/variant-photos', ['photos' => [$this->realUpload('candle.png', $this->pngBytes())]], ['Accept' => 'application/json'])
             ->assertCreated()
-            ->json('data.0.public_id');
+            ->json('data.0.reference_id');
     }
 
-    private function media(string $publicId): Media
+    private function media(string $referenceId): Media
     {
-        return Media::where('public_id', $publicId)->firstOrFail();
+        return Media::where('reference_id', $referenceId)->firstOrFail();
     }
 
-    private function pathOf(string $publicId): string
+    private function pathOf(string $referenceId): string
     {
-        return $this->media($publicId)->path;
+        return $this->media($referenceId)->path;
     }
 
     /** A valid ULID that matches nothing. */
@@ -87,7 +87,7 @@ class ProductTest extends TestCase
         [$cover, $second] = [$this->uploadPhoto(), $this->uploadPhoto()];
 
         $this->postJson('/api/v1/admin/products', $this->product([
-            $this->variant(['name' => 'Small · 4 oz', 'tag_ids' => [$tag->public_id], 'photo_ids' => [$cover, $second]]),
+            $this->variant(['name' => 'Small · 4 oz', 'tag_ids' => [$tag->reference_id], 'photo_ids' => [$cover, $second]]),
             $this->variant(['name' => 'Large · 12 oz', 'slug' => 'ignored-slug']),
         ]))
             ->assertCreated()
@@ -96,12 +96,12 @@ class ProductTest extends TestCase
             ->assertJsonPath('data.variants.0.original_price', '999.00')
             ->assertJsonPath('data.variants.0.selling_price', '899.50')
             ->assertJsonPath('data.variants.0.tags.0.name', 'Woody')
-            ->assertJsonPath('data.variants.0.photos.0.public_id', $cover)
+            ->assertJsonPath('data.variants.0.photos.0.reference_id', $cover)
             ->assertJsonPath('data.variants.0.photos.0.sort_order', 0)
-            ->assertJsonPath('data.variants.0.photos.1.public_id', $second)
+            ->assertJsonPath('data.variants.0.photos.1.reference_id', $second)
             ->assertJsonPath('data.variants.1.slug', 'winter-spice-large-12-oz');
 
-        $this->assertSame($cover, Product::sole()->variants->first()->photos->first()->public_id);
+        $this->assertSame($cover, Product::sole()->variants->first()->photos->first()->reference_id);
         $this->assertStringStartsWith('variant-photos/', $this->pathOf($cover));
     }
 
@@ -121,8 +121,8 @@ class ProductTest extends TestCase
         $this->assertSame('winter-spice', $product['slug']);
         $variant = $product['variants'][0];
 
-        $this->putJson("/api/v1/admin/products/{$product['public_id']}", $this->product([
-            $this->variant(['public_id' => $variant['public_id'], 'sku' => $variant['sku'], 'name' => 'Mini']),
+        $this->putJson("/api/v1/admin/products/{$product['reference_id']}", $this->product([
+            $this->variant(['reference_id' => $variant['reference_id'], 'sku' => $variant['sku'], 'name' => 'Mini']),
         ], ['name' => 'Winter Spice Deluxe']))
             ->assertOk()
             ->assertJsonPath('data.slug', 'winter-spice')
@@ -151,12 +151,12 @@ class ProductTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['name' => "There's already a product called WINTER SPICE."]);
 
-        $this->putJson("/api/v1/admin/products/{$other['public_id']}", $this->product([
-            $this->variant(['public_id' => $other['variants'][0]['public_id'], 'sku' => $other['variants'][0]['sku']]),
+        $this->putJson("/api/v1/admin/products/{$other['reference_id']}", $this->product([
+            $this->variant(['reference_id' => $other['variants'][0]['reference_id'], 'sku' => $other['variants'][0]['sku']]),
         ], ['name' => 'Winter Spice']))->assertUnprocessable()->assertJsonValidationErrors('name');
 
-        $this->putJson("/api/v1/admin/products/{$winter['public_id']}", $this->product([
-            $this->variant(['public_id' => $winter['variants'][0]['public_id'], 'sku' => $winter['variants'][0]['sku']]),
+        $this->putJson("/api/v1/admin/products/{$winter['reference_id']}", $this->product([
+            $this->variant(['reference_id' => $winter['variants'][0]['reference_id'], 'sku' => $winter['variants'][0]['sku']]),
         ]))->assertOk();
     }
 
@@ -185,7 +185,7 @@ class ProductTest extends TestCase
     {
         $avatar = Media::factory()->avatar()->create();
 
-        $this->postJson('/api/v1/admin/products', $this->product([$this->variant(['photo_ids' => [$this->unknownId(), $avatar->public_id]])]))
+        $this->postJson('/api/v1/admin/products', $this->product([$this->variant(['photo_ids' => [$this->unknownId(), $avatar->reference_id]])]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors([
                 'variants.0.photo_ids.0' => 'This photo was not found. Upload it again.',
@@ -205,23 +205,23 @@ class ProductTest extends TestCase
         $new = $this->uploadPhoto();
         $newPath = $this->pathOf($new);
 
-        $this->putJson("/api/v1/admin/products/{$product['public_id']}", $this->product([
-            $this->variant(['public_id' => $first['public_id'], 'sku' => $first['sku'], 'name' => 'Renamed', 'photo_ids' => [$new, $keep]]),
+        $this->putJson("/api/v1/admin/products/{$product['reference_id']}", $this->product([
+            $this->variant(['reference_id' => $first['reference_id'], 'sku' => $first['sku'], 'name' => 'Renamed', 'photo_ids' => [$new, $keep]]),
             $this->variant(['name' => 'Brand new']),
         ]))
             ->assertOk()
             ->assertJsonCount(2, 'data.variants')
             ->assertJsonPath('data.variants.0.name', 'Renamed')
             ->assertJsonPath('data.variants.0.slug', $first['slug'])
-            ->assertJsonPath('data.variants.0.photos.0.public_id', $new)
-            ->assertJsonPath('data.variants.0.photos.1.public_id', $keep)
+            ->assertJsonPath('data.variants.0.photos.0.reference_id', $new)
+            ->assertJsonPath('data.variants.0.photos.1.reference_id', $keep)
             ->assertJsonPath('data.variants.1.name', 'Brand new');
 
-        $this->assertDatabaseMissing('product_variants', ['public_id' => $second['public_id']]);
+        $this->assertDatabaseMissing('product_variants', ['reference_id' => $second['reference_id']]);
         Storage::disk('media-test')->assertExists([$keepPath, $newPath]);
         // Dropped from photo_ids: deleted now, with its file.
         Storage::disk('media-test')->assertMissing($dropPath);
-        $this->assertDatabaseMissing('media', ['public_id' => $drop]);
+        $this->assertDatabaseMissing('media', ['reference_id' => $drop]);
         // On a variant that was deleted: detached (owner null), file kept until the daily prune.
         $this->assertDetached($gone);
         Storage::disk('media-test')->assertExists($gonePath);
@@ -233,13 +233,13 @@ class ProductTest extends TestCase
         $product = $this->createProduct([$this->variant(['photo_ids' => [$photo]]), $this->variant()]);
         [$from, $to] = $product['variants'];
 
-        $this->putJson("/api/v1/admin/products/{$product['public_id']}", $this->product([
-            $this->variant(['public_id' => $from['public_id'], 'sku' => $from['sku']]),
-            $this->variant(['public_id' => $to['public_id'], 'sku' => $to['sku'], 'photo_ids' => [$photo]]),
-        ]))->assertOk()->assertJsonPath('data.variants.1.photos.0.public_id', $photo);
+        $this->putJson("/api/v1/admin/products/{$product['reference_id']}", $this->product([
+            $this->variant(['reference_id' => $from['reference_id'], 'sku' => $from['sku']]),
+            $this->variant(['reference_id' => $to['reference_id'], 'sku' => $to['sku'], 'photo_ids' => [$photo]]),
+        ]))->assertOk()->assertJsonPath('data.variants.1.photos.0.reference_id', $photo);
 
         Storage::disk('media-test')->assertExists($this->pathOf($photo));
-        $this->assertSame(ProductVariant::where('public_id', $to['public_id'])->value('id'), $this->media($photo)->mediable_id);
+        $this->assertSame(ProductVariant::where('reference_id', $to['reference_id'])->value('id'), $this->media($photo)->mediable_id);
     }
 
     public function test_an_inactive_product_makes_every_variant_inactive(): void
@@ -256,12 +256,12 @@ class ProductTest extends TestCase
         $other = $this->createProduct([$this->variant(['photo_ids' => [$photo]])], ['name' => 'Other']);
         $mine = $this->createProduct([$this->variant()], ['name' => 'Mine']);
 
-        $this->putJson("/api/v1/admin/products/{$mine['public_id']}", $this->product([
-            $this->variant(['public_id' => $other['variants'][0]['public_id']]),
-        ], ['name' => 'Mine']))->assertUnprocessable()->assertJsonValidationErrors('variants.0.public_id');
+        $this->putJson("/api/v1/admin/products/{$mine['reference_id']}", $this->product([
+            $this->variant(['reference_id' => $other['variants'][0]['reference_id']]),
+        ], ['name' => 'Mine']))->assertUnprocessable()->assertJsonValidationErrors('variants.0.reference_id');
 
-        $this->putJson("/api/v1/admin/products/{$mine['public_id']}", $this->product([
-            $this->variant(['public_id' => $mine['variants'][0]['public_id'], 'sku' => $mine['variants'][0]['sku'], 'photo_ids' => [$photo]]),
+        $this->putJson("/api/v1/admin/products/{$mine['reference_id']}", $this->product([
+            $this->variant(['reference_id' => $mine['variants'][0]['reference_id'], 'sku' => $mine['variants'][0]['sku'], 'photo_ids' => [$photo]]),
         ], ['name' => 'Mine']))->assertUnprocessable()->assertJsonValidationErrors('variants.0.photo_ids');
     }
 
@@ -270,9 +270,9 @@ class ProductTest extends TestCase
         $tag = Tag::factory()->create();
         $photo = $this->uploadPhoto();
         $photoPath = $this->pathOf($photo);
-        $product = $this->createProduct([$this->variant(['tag_ids' => [$tag->public_id], 'photo_ids' => [$photo]])]);
+        $product = $this->createProduct([$this->variant(['tag_ids' => [$tag->reference_id], 'photo_ids' => [$photo]])]);
 
-        $this->deleteJson("/api/v1/admin/products/{$product['public_id']}")->assertNoContent();
+        $this->deleteJson("/api/v1/admin/products/{$product['reference_id']}")->assertNoContent();
 
         $this->assertDatabaseCount('products', 0);
         $this->assertDatabaseCount('product_variants', 0);
@@ -287,18 +287,18 @@ class ProductTest extends TestCase
         $photo = $this->uploadPhoto();
         $photoPath = $this->pathOf($photo);
         $product = $this->createProduct([$this->variant(['photo_ids' => [$photo]])]);
-        $this->deleteJson("/api/v1/admin/products/{$product['public_id']}")->assertNoContent();
+        $this->deleteJson("/api/v1/admin/products/{$product['reference_id']}")->assertNoContent();
 
         $this->travel(25)->hours();
         $this->artisan('model:prune', ['--model' => [Media::class]])->assertSuccessful();
 
-        $this->assertDatabaseMissing('media', ['public_id' => $photo]);
+        $this->assertDatabaseMissing('media', ['reference_id' => $photo]);
         Storage::disk('media-test')->assertMissing($photoPath);
     }
 
-    private function assertDetached(string $publicId): void
+    private function assertDetached(string $referenceId): void
     {
-        $media = $this->media($publicId);
+        $media = $this->media($referenceId);
         $this->assertNull($media->mediable_type);
         $this->assertNull($media->mediable_id);
     }
@@ -311,12 +311,12 @@ class ProductTest extends TestCase
         $other = $this->createProduct([$this->variant()], ['name' => 'Other']);
         [$first, $second] = $product['variants'];
 
-        $this->deleteJson("/api/v1/admin/products/{$product['public_id']}/variants/{$other['variants'][0]['public_id']}")->assertNotFound();
-        $this->deleteJson("/api/v1/admin/products/{$product['public_id']}/variants/{$first['public_id']}")->assertNoContent();
+        $this->deleteJson("/api/v1/admin/products/{$product['reference_id']}/variants/{$other['variants'][0]['reference_id']}")->assertNotFound();
+        $this->deleteJson("/api/v1/admin/products/{$product['reference_id']}/variants/{$first['reference_id']}")->assertNoContent();
         $this->assertDetached($photo);
         Storage::disk('media-test')->assertExists($photoPath);
 
-        $this->deleteJson("/api/v1/admin/products/{$product['public_id']}/variants/{$second['public_id']}")
+        $this->deleteJson("/api/v1/admin/products/{$product['reference_id']}/variants/{$second['reference_id']}")
             ->assertConflict()
             ->assertJsonPath('message', 'A product needs at least one variant. Delete the product instead.');
     }
@@ -347,12 +347,12 @@ class ProductTest extends TestCase
         ], ['name' => 'Wide range']);
         $mid = $this->createProduct([$this->variant(['original_price' => '800', 'selling_price' => '700', 'stock' => 5])], ['name' => 'Mid']);
 
-        $ids = fn (string $sort) => array_column($this->getJson("/api/v1/admin/products?sort={$sort}")->assertOk()->json('data'), 'public_id');
+        $ids = fn (string $sort) => array_column($this->getJson("/api/v1/admin/products?sort={$sort}")->assertOk()->json('data'), 'reference_id');
 
-        $this->assertSame([$wide['public_id'], $cheap['public_id'], $mid['public_id']], $ids('price_low'));   // lowest prices 200, 250, 700
-        $this->assertSame([$wide['public_id'], $mid['public_id'], $cheap['public_id']], $ids('price_high'));  // highest prices 1500, 700, 250
-        $this->assertSame([$wide['public_id'], $mid['public_id'], $cheap['public_id']], $ids('stock_low'));   // total stock 2, 5, 50
-        $this->assertSame([$cheap['public_id'], $mid['public_id'], $wide['public_id']], $ids('name'));
+        $this->assertSame([$wide['reference_id'], $cheap['reference_id'], $mid['reference_id']], $ids('price_low'));   // lowest prices 200, 250, 700
+        $this->assertSame([$wide['reference_id'], $mid['reference_id'], $cheap['reference_id']], $ids('price_high'));  // highest prices 1500, 700, 250
+        $this->assertSame([$wide['reference_id'], $mid['reference_id'], $cheap['reference_id']], $ids('stock_low'));   // total stock 2, 5, 50
+        $this->assertSame([$cheap['reference_id'], $mid['reference_id'], $wide['reference_id']], $ids('name'));
 
         $this->getJson('/api/v1/admin/products')
             ->assertJsonPath('filter_options.sort', ['newest', 'name', 'price_low', 'price_high', 'stock_low']);
@@ -369,8 +369,8 @@ class ProductTest extends TestCase
             ->assertCreated()
             ->assertJsonCount(3, 'data');
 
-        $ids = array_column($response->json('data'), 'public_id');
-        $this->assertSame($ids, Media::orderBy('id')->pluck('public_id')->all());
+        $ids = array_column($response->json('data'), 'reference_id');
+        $this->assertSame($ids, Media::orderBy('id')->pluck('reference_id')->all());
         $this->assertSame(3, Media::whereNull('mediable_id')->count());
         $this->assertCount(3, Storage::disk('media-test')->allFiles('variant-photos'));
     }
@@ -395,7 +395,7 @@ class ProductTest extends TestCase
 
         $this->deleteJson("/api/v1/admin/uploads/variant-photos/{$photo}")->assertNoContent();
 
-        $this->assertDatabaseMissing('media', ['public_id' => $photo]);
+        $this->assertDatabaseMissing('media', ['reference_id' => $photo]);
         Storage::disk('media-test')->assertMissing($path);
     }
 
@@ -408,17 +408,17 @@ class ProductTest extends TestCase
         $this->deleteJson("/api/v1/admin/uploads/variant-photos/{$second}")->assertNoContent();
 
         Storage::disk('media-test')->assertMissing($secondPath);
-        $this->getJson("/api/v1/admin/products/{$product['public_id']}")
+        $this->getJson("/api/v1/admin/products/{$product['reference_id']}")
             ->assertJsonCount(2, 'data.variants.0.photos')
-            ->assertJsonPath('data.variants.0.photos.0.public_id', $cover)
-            ->assertJsonPath('data.variants.0.photos.1.public_id', $third);
+            ->assertJsonPath('data.variants.0.photos.0.reference_id', $cover)
+            ->assertJsonPath('data.variants.0.photos.1.reference_id', $third);
     }
 
     public function test_any_admin_can_delete_another_admins_unsaved_upload(): void
     {
         $theirs = Media::factory()->create(['uploaded_by' => User::factory()->admin()->create()->id]);
 
-        $this->deleteJson("/api/v1/admin/uploads/variant-photos/{$theirs->public_id}")->assertNoContent();
+        $this->deleteJson("/api/v1/admin/uploads/variant-photos/{$theirs->reference_id}")->assertNoContent();
 
         $this->assertModelMissing($theirs);
     }
@@ -427,7 +427,7 @@ class ProductTest extends TestCase
     {
         $avatar = Media::factory()->avatar()->create();
 
-        $this->deleteJson("/api/v1/admin/uploads/variant-photos/{$avatar->public_id}")->assertNotFound();
+        $this->deleteJson("/api/v1/admin/uploads/variant-photos/{$avatar->reference_id}")->assertNotFound();
         $this->deleteJson("/api/v1/admin/uploads/variant-photos/{$this->unknownId()}")->assertNotFound();
         $this->assertModelExists($avatar);
     }

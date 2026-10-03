@@ -17,9 +17,9 @@ class CustomerAddressResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            /** Internal database id: shown for reference only; URLs and requests take public_id. */
+            /** Internal database id: shown for reference only; URLs and requests take reference_id. */
             'id' => $this->id,
-            'public_id' => $this->public_id,
+            'reference_id' => $this->reference_id,
             'label' => $this->label,
             'recipient_name' => $this->recipient_name,
             'phone' => $this->phone,

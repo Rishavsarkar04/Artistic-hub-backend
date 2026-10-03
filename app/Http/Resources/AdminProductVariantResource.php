@@ -13,9 +13,9 @@ class AdminProductVariantResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            /** Internal database id: shown for reference only; URLs and requests take public_id. */
+            /** Internal database id: shown for reference only; URLs and requests take reference_id. */
             'id' => $this->id,
-            'public_id' => $this->public_id,
+            'reference_id' => $this->reference_id,
             'name' => $this->name,
             'sku' => $this->sku,
             'slug' => $this->slug,
@@ -26,7 +26,7 @@ class AdminProductVariantResource extends JsonResource
             'selling_price' => $this->selling_price,
             'stock' => $this->stock,
             'is_active' => $this->is_active,
-            /** In display order; the first is the cover. Send their public_ids back as photo_ids to keep them. */
+            /** In display order; the first is the cover. Send their reference_ids back as photo_ids to keep them. */
             'photos' => MediaResource::collection($this->whenLoaded('photos')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
             'created_at' => $this->created_at?->toIso8601String(),

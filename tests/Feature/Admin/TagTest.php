@@ -52,19 +52,19 @@ class TagTest extends TestCase
         $this->postJson('/api/v1/admin/tags', ['name' => 'Woody'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['name' => "There's already a tag called Woody."]);
-        $this->putJson("/api/v1/admin/tags/{$floral->public_id}", ['name' => 'Woody'])->assertUnprocessable()->assertJsonValidationErrors('name');
-        $this->putJson("/api/v1/admin/tags/{$woody->public_id}", ['name' => 'Woody'])->assertOk();
+        $this->putJson("/api/v1/admin/tags/{$floral->reference_id}", ['name' => 'Woody'])->assertUnprocessable()->assertJsonValidationErrors('name');
+        $this->putJson("/api/v1/admin/tags/{$woody->reference_id}", ['name' => 'Woody'])->assertOk();
     }
 
     public function test_renaming_updates_the_name_and_slug(): void
     {
         $tag = Tag::factory()->create(['name' => 'Woodsy', 'slug' => 'woodsy']);
 
-        $this->putJson("/api/v1/admin/tags/{$tag->public_id}", ['name' => 'Woody'])
+        $this->putJson("/api/v1/admin/tags/{$tag->reference_id}", ['name' => 'Woody'])
             ->assertOk()
             ->assertJsonPath('data.slug', 'woody');
 
-        $this->putJson("/api/v1/admin/tags/{$tag->public_id}", ['name' => 'woody'])->assertOk();
+        $this->putJson("/api/v1/admin/tags/{$tag->reference_id}", ['name' => 'woody'])->assertOk();
     }
 
     public function test_deleting_a_tag_keeps_the_variants(): void
@@ -73,7 +73,7 @@ class TagTest extends TestCase
         $variant = ProductVariant::factory()->create();
         $variant->tags()->attach($tag);
 
-        $this->deleteJson("/api/v1/admin/tags/{$tag->public_id}")->assertNoContent();
+        $this->deleteJson("/api/v1/admin/tags/{$tag->reference_id}")->assertNoContent();
 
         $this->assertModelMissing($tag);
         $this->assertModelExists($variant);

@@ -33,8 +33,9 @@ As of 2026-10-02 the backend is a Laravel 13 application with:
   transaction, `ProductVariantService` the variants, `VariantPhotoService`
   attaches photo media; `AdminProductQuery` the list), tags
   (`TagService`), the shared `media` table (`MediaService`, upload then
-  attach, daily pruning of unattached uploads), and client-facing ULID ids
-  on every exposed model (`HasPublicId`).
+  attach, daily pruning of unattached uploads), client-facing ULID ids on
+  every exposed model (`HasReferenceId`), and the public shop listing
+  (`GET /api/v1/shop/product-variants`, `ShopVariantQuery`).
   Do not run `php artisan install:api`: it would register `routes/api.php`
   through the `api:` option with its own prefix and overwrite the file.
 - Installed: `laravel/passport` (personal access tokens only),
@@ -160,8 +161,9 @@ Rules:
 - Route names are prefixed `api.v1.`, `customer.v1.` or `admin.v1.`, and controllers live in
   `App\Http\Controllers\Api\Customer` or `...\Api\Admin`
   (auth controllers in `Api\Customer\Auth` / `Api\Admin\Auth`).
-  Controllers for `routes/api.php` live in `Api\Catalog` (catalog, tags)
-  and `Api\Webhooks` (Razorpay).
+  Controllers for `routes/api.php` live in `Api\Shop` (the public
+  storefront catalogue, under the `/shop` URL prefix and `api.v1.shop.`
+  route names) and `Api\Webhooks` (Razorpay).
 - Never mix audiences in one group. A route that both roles need is
   defined once per file with its own controller, or stays public.
 - Admin and customer sign-in are separate controllers. Each accepts
@@ -1550,22 +1552,22 @@ new kind of class appears, add its rule here.
 
 ### 29.4 Routes and API
 
-- **Public ids for lookups** (decided 2026-10-03). Every model whose id
-  reaches the API uses `App\Models\Concerns\HasPublicId` and has a
-  `public_id` ULID column (`$table->ulid('public_id')->unique()`).
+- **Reference ids for lookups** (decided 2026-10-03). Every model whose id
+  reaches the API uses `App\Models\Concerns\HasReferenceId` and has a
+  `reference_id` ULID column (`$table->ulid('reference_id')->unique()`).
   Resources return both `'id' => $this->id` (the internal id, shown for
   reference only; it reveals record counts and order) and
-  `'public_id' => $this->public_id`. Only `public_id` is ever accepted:
+  `'reference_id' => $this->reference_id`. Only `reference_id` is ever accepted:
   request fields that refer to an existing record use
-  the same name (e.g. `variants.*.public_id`), while lists of references
-  keep `*_ids` names with public ids as values (`tag_ids`, `photo_ids`).
+  the same name (e.g. `variants.*.reference_id`), while lists of references
+  keep `*_ids` names with reference ids as values (`tag_ids`, `photo_ids`).
   URLs use it (route model
-  binding resolves `public_id`; constrain routes with `->whereUlid()`);
-  requests accept public ids (`'ulid'` +
-  `Rule::exists('table', 'public_id')`) and translate them to internal ids
+  binding resolves `reference_id`; constrain routes with `->whereUlid()`);
+  requests accept reference ids (`'ulid'` +
+  `Rule::exists('table', 'reference_id')`) and translate them to internal ids
   before calling services (see `SaveProductRequest::toData()`). Services
   keep working with internal ids, and lookups from a URL use
-  `where('public_id', …)` inside the owner's scope.
+  `where('reference_id', …)` inside the owner's scope.
 
 - List endpoints paginate with `->paginate($perPage)` and **without**
   `->withQueryString()`: the `links` URLs carry only `?page=N`. Clients

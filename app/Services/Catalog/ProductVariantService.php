@@ -28,7 +28,7 @@ final class ProductVariantService
 
         foreach ($data->variants as $index => $variant) {
             if ($variant->id !== null && ! in_array($variant->id, $ownIds, true)) {
-                throw ValidationException::withMessages(["variants.{$index}.public_id" => 'This variant does not belong to the product.']);
+                throw ValidationException::withMessages(["variants.{$index}.reference_id" => 'This variant does not belong to the product.']);
             }
             if ((clone $others)->where('sku', $variant->sku)->exists()) {
                 throw ValidationException::withMessages(["variants.{$index}.sku" => "The SKU {$variant->sku} is already used by another product."]);
@@ -88,7 +88,7 @@ final class ProductVariantService
         DB::transaction(function () use ($product, $variantId) {
             Product::whereKey($product->getKey())->lockForUpdate()->first();
 
-            $variant = $product->variants()->where('public_id', $variantId)->firstOrFail();
+            $variant = $product->variants()->where('reference_id', $variantId)->firstOrFail();
 
             if ($product->variants()->count() === 1) {
                 throw new LastVariant;

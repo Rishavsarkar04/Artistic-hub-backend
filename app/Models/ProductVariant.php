@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\MediaCollection;
-use App\Models\Concerns\HasPublicId;
+use App\Models\Concerns\HasReferenceId;
 use Database\Factories\ProductVariantFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class ProductVariant extends Model
 {
     /** @use HasFactory<ProductVariantFactory> */
-    use HasFactory, HasPublicId;
+    use HasFactory, HasReferenceId;
 
     /** @return array<string, string> */
     protected function casts(): array
@@ -57,5 +59,30 @@ class ProductVariant extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'product_variant_tags')->withTimestamps()->orderBy('name');
+    }
+
+    /** @param  Builder<self>  $query */
+    #[Scope]
+    protected function active(Builder $query): void
+    {
+        $query->where($query->qualifyColumn('is_active'), true);
+    }
+
+    /** @param  Builder<self>  $query */
+    #[Scope]
+    protected function inStock(Builder $query): void
+    {
+        $query->where($query->qualifyColumn('stock'), '>', 0);
+    }
+
+    /**
+     * What customers can buy: an active, in-stock variant of an active product.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function buyable(Builder $query): void
+    {
+        $query->active()->inStock()->whereHas('product', fn (Builder $product) => $product->active());
     }
 }

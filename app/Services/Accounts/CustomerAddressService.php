@@ -97,10 +97,10 @@ final class CustomerAddressService
         $address->save();
     }
 
-    /** $addressId is the client-facing public_id. */
+    /** $addressId is the client-facing reference_id. */
     private function findAddress(CustomerProfile $profile, string $addressId): CustomerAddress
     {
-        return $profile->addresses()->where('public_id', $addressId)->firstOrFail();
+        return $profile->addresses()->where('reference_id', $addressId)->firstOrFail();
     }
 
     private function lockProfile(CustomerProfile $profile): void

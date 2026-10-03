@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MediaCollection;
-use App\Models\Concerns\HasPublicId;
+use App\Models\Concerns\HasReferenceId;
 use App\Services\Media\MediaStorageService;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class Media extends Model
 {
     /** @use HasFactory<MediaFactory> */
-    use HasFactory, HasPublicId, Prunable;
+    use HasFactory, HasReferenceId, Prunable;
 
     /** @return array<string, string> */
     protected function casts(): array

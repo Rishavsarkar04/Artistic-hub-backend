@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('product_variants', function (Blueprint $table) {
             $table->id();
-            $table->ulid('public_id')->unique();
+            $table->ulid('reference_id')->unique();
             // Deleting a product deletes its variants. Order items keep their own snapshot.
             $table->foreignId('product_id')->constrained()->cascadeOnDelete();
             $table->string('name');

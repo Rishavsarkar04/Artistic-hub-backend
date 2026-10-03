@@ -84,7 +84,7 @@ final class VariantPhotoService
     {
         $photo = Media::query()
             ->where('collection', MediaCollection::VariantPhoto)
-            ->where('public_id', $mediaId)
+            ->where('reference_id', $mediaId)
             ->firstOrFail();
 
         $this->mediaService->delete($photo);

@@ -17,9 +17,9 @@ class AdminResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            /** Internal database id: shown for reference only; URLs and requests take public_id. */
+            /** Internal database id: shown for reference only; URLs and requests take reference_id. */
             'id' => $this->id,
-            'public_id' => $this->public_id,
+            'reference_id' => $this->reference_id,
             'name' => $this->name,
             'email' => $this->email,
             'status' => $this->status,

@@ -869,7 +869,7 @@
                         "name": "product",
                         "in": "path",
                         "required": true,
-                        "description": "The product public id",
+                        "description": "The product reference id",
                         "schema": {
                             "type": "integer"
                         }
@@ -914,7 +914,7 @@
             },
             "put": {
                 "operationId": "admin.v1.products.update",
-                "description": "Send the whole product: variants with a `public_id` are updated, without one are created, and variants not\nsent are deleted. Turning the product off turns every variant off. Photos not sent are deleted with their files.",
+                "description": "Send the whole product: variants with a `reference_id` are updated, without one are created, and variants not\nsent are deleted. Turning the product off turns every variant off. Photos not sent are deleted with their files.",
                 "summary": "Save a product with all its variants",
                 "tags": [
                     "Product"
@@ -924,7 +924,7 @@
                         "name": "product",
                         "in": "path",
                         "required": true,
-                        "description": "The product public id",
+                        "description": "The product reference id",
                         "schema": {
                             "type": "integer"
                         }
@@ -992,7 +992,7 @@
                         "name": "product",
                         "in": "path",
                         "required": true,
-                        "description": "The product public id",
+                        "description": "The product reference id",
                         "schema": {
                             "type": "integer"
                         }
@@ -1011,6 +1011,348 @@
                 }
             }
         },
+        "/shop/product-variants": {
+            "get": {
+                "operationId": "v1.shop.product-variants.index",
+                "description": "One card per buyable variant (active, of an active product, in stock), paginated. Besides `data`, `links`\nand `meta`, the response has `filters` (as applied), `filter_options`, `price_range` (lowest and highest\nselling price of everything buyable, for the price slider) and `tag_counts` (how many listed variants have\neach tag, under the current search and price filters).",
+                "summary": "List product variants for the shop",
+                "tags": [
+                    "ProductVariant"
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Searches variant and product names and descriptions, and tag names.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 100
+                        }
+                    },
+                    {
+                        "name": "min_price",
+                        "in": "query",
+                        "description": "Selling price in rupees, e.g. \"800\" or \"800.00\".",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^\\d{1,8}(\\.\\d{1,2})?$"
+                        }
+                    },
+                    {
+                        "name": "max_price",
+                        "in": "query",
+                        "description": "Selling price in rupees; must not be below min_price.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^\\d{1,8}(\\.\\d{1,2})?$"
+                        }
+                    },
+                    {
+                        "name": "tags[]",
+                        "in": "query",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "maxLength": 120
+                            }
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "newest (default), price_low, price_high.\n| |\n|---|\n| `newest` <br/>  |\n| `price_low` <br/> Selling price, lowest first. |\n| `price_high` <br/> Selling price, highest first. |",
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "$ref": "#/components/schemas/ShopVariantSort"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Defaults to 24.",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated set of `ShopVariantCardResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ShopVariantCardResource"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "properties": {
+                                                "first": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "prev": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "next": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "first",
+                                                "last",
+                                                "prev",
+                                                "next"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "from",
+                                                "last_page",
+                                                "links",
+                                                "path",
+                                                "per_page",
+                                                "to",
+                                                "total"
+                                            ]
+                                        },
+                                        "filters": {
+                                            "type": "object",
+                                            "properties": {
+                                                "search": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "min_price": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "max_price": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "tags": {
+                                                    "type": "array",
+                                                    "items": {}
+                                                },
+                                                "sort": {
+                                                    "type": "string"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "search",
+                                                "min_price",
+                                                "max_price",
+                                                "tags",
+                                                "sort",
+                                                "per_page"
+                                            ]
+                                        },
+                                        "filter_options": {
+                                            "type": "object",
+                                            "properties": {
+                                                "sort": {
+                                                    "type": "array",
+                                                    "items": {}
+                                                }
+                                            },
+                                            "required": [
+                                                "sort"
+                                            ]
+                                        },
+                                        "price_range": {
+                                            "type": "object",
+                                            "properties": {
+                                                "min": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "max": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "min",
+                                                "max"
+                                            ]
+                                        },
+                                        "tag_counts": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "slug": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "count": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "slug",
+                                                    "name",
+                                                    "count"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "links",
+                                        "meta",
+                                        "filters",
+                                        "filter_options",
+                                        "price_range",
+                                        "tag_counts"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
         "/admin/products/{product}/variants/{variant}": {
             "delete": {
                 "operationId": "admin.v1.products.variants.destroy",
@@ -1024,7 +1366,7 @@
                         "name": "product",
                         "in": "path",
                         "required": true,
-                        "description": "The product public id",
+                        "description": "The product reference id",
                         "schema": {
                             "type": "integer"
                         }
@@ -1692,7 +2034,7 @@
                         "name": "tag",
                         "in": "path",
                         "required": true,
-                        "description": "The tag public id",
+                        "description": "The tag reference id",
                         "schema": {
                             "type": "integer"
                         }
@@ -1749,7 +2091,7 @@
                         "name": "tag",
                         "in": "path",
                         "required": true,
-                        "description": "The tag public id",
+                        "description": "The tag reference id",
                         "schema": {
                             "type": "integer"
                         }
@@ -1872,21 +2214,24 @@
                 "properties": {
                     "id": {
                         "type": "integer",
-                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                        "description": "Internal database id: shown for reference only; URLs and requests take reference_id."
                     },
-                    "public_id": {
+                    "reference_id": {
                         "type": "string"
                     },
                     "name": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Null until the customer creates their profile."
                     },
                     "email": {
                         "type": "string"
                     },
                     "status": {
-                        "type": "string",
-                        "description": "Shown on the row; there is no status filter."
+                        "description": "Shown on the row; there is no status filter.",
+                        "$ref": "#/components/schemas/UserStatus"
                     },
                     "profile_completed": {
                         "type": "boolean"
@@ -1907,7 +2252,7 @@
                 },
                 "required": [
                     "id",
-                    "public_id",
+                    "reference_id",
                     "name",
                     "email",
                     "status",
@@ -1923,9 +2268,9 @@
                 "properties": {
                     "id": {
                         "type": "string",
-                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                        "description": "Internal database id: shown for reference only; URLs and requests take reference_id."
                     },
-                    "public_id": {
+                    "reference_id": {
                         "type": "string"
                     },
                     "name": {
@@ -1961,7 +2306,7 @@
                 },
                 "required": [
                     "id",
-                    "public_id",
+                    "reference_id",
                     "name",
                     "slug",
                     "description",
@@ -1975,10 +2320,10 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string",
-                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                        "type": "integer",
+                        "description": "Internal database id: shown for reference only; URLs and requests take reference_id."
                     },
-                    "public_id": {
+                    "reference_id": {
                         "type": "string"
                     },
                     "name": {
@@ -1991,7 +2336,10 @@
                         "type": "string"
                     },
                     "description": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "original_price": {
                         "type": "string",
@@ -2002,14 +2350,14 @@
                         "description": "Rupees as a string; never more than original_price."
                     },
                     "stock": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "is_active": {
-                        "type": "string"
+                        "type": "boolean"
                     },
                     "photos": {
                         "type": "array",
-                        "description": "In display order; the first is the cover. Send their public_ids back as photo_ids to keep them.",
+                        "description": "In display order; the first is the cover. Send their reference_ids back as photo_ids to keep them.",
                         "items": {
                             "$ref": "#/components/schemas/MediaResource"
                         }
@@ -2035,7 +2383,7 @@
                 },
                 "required": [
                     "id",
-                    "public_id",
+                    "reference_id",
                     "name",
                     "sku",
                     "slug",
@@ -2054,19 +2402,22 @@
                 "properties": {
                     "id": {
                         "type": "integer",
-                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                        "description": "Internal database id: shown for reference only; URLs and requests take reference_id."
                     },
-                    "public_id": {
+                    "reference_id": {
                         "type": "string"
                     },
                     "name": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "email": {
                         "type": "string"
                     },
                     "status": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/UserStatus"
                     },
                     "role": {
                         "type": "string",
@@ -2081,7 +2432,7 @@
                 },
                 "required": [
                     "id",
-                    "public_id",
+                    "reference_id",
                     "name",
                     "email",
                     "status",
@@ -2139,9 +2490,9 @@
                 "properties": {
                     "id": {
                         "type": "integer",
-                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                        "description": "Internal database id: shown for reference only; URLs and requests take reference_id."
                     },
-                    "public_id": {
+                    "reference_id": {
                         "type": "string"
                     },
                     "label": {
@@ -2193,7 +2544,7 @@
                 },
                 "required": [
                     "id",
-                    "public_id",
+                    "reference_id",
                     "label",
                     "recipient_name",
                     "phone",
@@ -2213,7 +2564,10 @@
                 "type": "object",
                 "properties": {
                     "name": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Stored on the user account; set and changed with the profile."
                     },
                     "phone": {
@@ -2237,7 +2591,10 @@
                         ]
                     },
                     "avatar_url": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Public URL of the avatar, or null if none."
                     },
                     "created_at": {
@@ -2269,20 +2626,23 @@
                 "properties": {
                     "id": {
                         "type": "integer",
-                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                        "description": "Internal database id: shown for reference only; URLs and requests take reference_id."
                     },
-                    "public_id": {
+                    "reference_id": {
                         "type": "string"
                     },
                     "name": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "description": "Null until the customer creates their profile."
                     },
                     "email": {
                         "type": "string"
                     },
                     "status": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/UserStatus"
                     },
                     "role": {
                         "type": "string",
@@ -2312,7 +2672,7 @@
                 },
                 "required": [
                     "id",
-                    "public_id",
+                    "reference_id",
                     "name",
                     "email",
                     "status",
@@ -2391,10 +2751,10 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string",
-                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                        "type": "integer",
+                        "description": "Internal database id: shown for reference only; URLs and requests take reference_id."
                     },
-                    "public_id": {
+                    "reference_id": {
                         "type": "string"
                     },
                     "url": {
@@ -2404,17 +2764,17 @@
                         "type": "string"
                     },
                     "size": {
-                        "type": "string",
+                        "type": "integer",
                         "description": "Bytes."
                     },
                     "sort_order": {
-                        "type": "string",
+                        "type": "integer",
                         "description": "Position among its owner's media; 0 is the cover."
                     }
                 },
                 "required": [
                     "id",
-                    "public_id",
+                    "reference_id",
                     "url",
                     "mime_type",
                     "size",
@@ -2468,7 +2828,7 @@
             },
             "SaveProductRequest": {
                 "type": "object",
-                "description": "The whole product, sent on every save (create and update): product fields plus every variant it\nshould have. Variants with a `public_id` are updated, without one are created, and variants not sent are\ndeleted. Photos are media ids returned by POST /admin/uploads/variant-photos, in display order.\nEvery id here is a client-facing public id (ULID); toData() turns them into internal ids.",
+                "description": "The whole product, sent on every save (create and update): product fields plus every variant it\nshould have. Variants with a `reference_id` are updated, without one are created, and variants not sent are\ndeleted. Photos are media ids returned by POST /admin/uploads/variant-photos, in display order.\nEvery id here is a client-facing reference id (ULID); toData() turns them into internal ids.",
                 "properties": {
                     "name": {
                         "type": "string",
@@ -2491,12 +2851,12 @@
                         "items": {
                             "type": "object",
                             "properties": {
-                                "public_id": {
+                                "reference_id": {
                                     "type": [
                                         "string",
                                         "null"
                                     ],
-                                    "description": "The variant's public_id; leave out for a new variant."
+                                    "description": "The variant's reference_id; leave out for a new variant."
                                 },
                                 "name": {
                                     "type": "string",
@@ -2591,6 +2951,89 @@
                     "name"
                 ],
                 "title": "SaveTagRequest"
+            },
+            "ShopVariantCardResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "reference_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "product": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "reference_id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "slug": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "reference_id",
+                            "name",
+                            "slug"
+                        ]
+                    },
+                    "original_price": {
+                        "type": "string",
+                        "description": "Rupees as a string, e.g. \"1199.00\"."
+                    },
+                    "selling_price": {
+                        "type": "string",
+                        "description": "What the customer pays; lower than original_price when discounted."
+                    },
+                    "cover_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The first photo, or null."
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TagResource"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "reference_id",
+                    "name",
+                    "slug",
+                    "product",
+                    "original_price",
+                    "selling_price",
+                    "cover_url",
+                    "tags"
+                ],
+                "title": "ShopVariantCardResource"
+            },
+            "ShopVariantSort": {
+                "type": "string",
+                "description": "Sort orders for the shop's product-variant listing.\n| |\n|---|\n| `newest` <br/>  |\n| `price_low` <br/> Selling price, lowest first. |\n| `price_high` <br/> Selling price, highest first. |",
+                "enum": [
+                    "newest",
+                    "price_low",
+                    "price_high"
+                ],
+                "title": "ShopVariantSort"
             },
             "StoreAddressRequest": {
                 "type": "object",
@@ -2698,10 +3141,10 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string",
-                        "description": "Internal database id: shown for reference only; URLs and requests take public_id."
+                        "type": "integer",
+                        "description": "Internal database id: shown for reference only; URLs and requests take reference_id."
                     },
-                    "public_id": {
+                    "reference_id": {
                         "type": "string"
                     },
                     "name": {
@@ -2713,7 +3156,7 @@
                 },
                 "required": [
                     "id",
-                    "public_id",
+                    "reference_id",
                     "name",
                     "slug"
                 ],
@@ -2857,6 +3300,17 @@
                     "photos"
                 ],
                 "title": "UploadVariantPhotosRequest"
+            },
+            "UserStatus": {
+                "type": "string",
+                "description": "users.status. Only active accounts can sign in.\n",
+                "enum": [
+                    "active",
+                    "blocked",
+                    "suspended",
+                    "pending"
+                ],
+                "title": "UserStatus"
             }
         },
         "responses": {

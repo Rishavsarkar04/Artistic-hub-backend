@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('products', function (Blueprint $table) {
             $table->id();
-            $table->ulid('public_id')->unique();
+            $table->ulid('reference_id')->unique();
             // Unique; MySQL's default collation compares it case-insensitively.
             $table->string('name')->unique();
             $table->string('slug')->unique();

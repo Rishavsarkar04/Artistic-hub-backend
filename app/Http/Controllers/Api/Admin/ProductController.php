@@ -54,7 +54,7 @@ class ProductController extends Controller
     /**
      * Save a product with all its variants.
      *
-     * Send the whole product: variants with a `public_id` are updated, without one are created, and variants not
+     * Send the whole product: variants with a `reference_id` are updated, without one are created, and variants not
      * sent are deleted. Turning the product off turns every variant off. Photos not sent are deleted with their files.
      */
     public function update(SaveProductRequest $request, Product $product): AdminProductResource

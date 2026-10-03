@@ -4,7 +4,7 @@ Source of truth for the Artistic Hub database schema. Migrations in `database/mi
 
 ## Notes
 
-- Client-facing ids (decided 2026-10-03): `users`, `customer_addresses`, `products`, `product_variants`, `tags` and `media` have a `public_id` (ULID, unique). The API accepts only `public_id` (in URLs and requests); responses show both `public_id` and the internal `id` (for reference only). The auto-increment `id` stays the primary key for foreign keys and joins.
+- Client-facing ids (decided 2026-10-03): `users`, `customer_addresses`, `products`, `product_variants`, `tags` and `media` have a `reference_id` (ULID, unique). The API accepts only `reference_id` (in URLs and requests); responses show both `reference_id` and the internal `id` (for reference only). The auto-increment `id` stays the primary key for foreign keys and joins.
 
 - Roles use `spatie/laravel-permission` tables (`roles`, `model_has_roles`). The two roles are `admin` and `customer` (`App\Enums\Role`), guard `web`. The package's migration also creates `permissions`, `model_has_permissions` and `role_has_permissions`; they stay empty because only roles are used.
 - Not shown: Laravel's framework tables (`password_reset_tokens`, `sessions`, `cache`, `jobs`), `users.remember_token`, and Laravel Passport's tables (`oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes`). Only `oauth_clients` (one personal access client) and `oauth_access_tokens` (sign-in tokens, linked to `users.id`) are used.
@@ -31,7 +31,7 @@ erDiagram
 
     USERS {
         bigint id PK
-        string public_id UK "ULID; the only id the API accepts"
+        string reference_id UK "ULID; the only id the API accepts"
         string name "nullable until profile creation"
         string email UK
         timestamp email_verified_at "nullable"
@@ -70,7 +70,7 @@ erDiagram
 
     CUSTOMER_ADDRESSES {
         bigint id PK
-        string public_id UK "ULID; the only id the API accepts"
+        string reference_id UK "ULID; the only id the API accepts"
         bigint customer_profile_id FK
         string label "home, work, or other; default home"
         string recipient_name
@@ -88,7 +88,7 @@ erDiagram
 
     PRODUCTS {
         bigint id PK
-        string public_id UK "ULID; the only id the API accepts"
+        string reference_id UK "ULID; the only id the API accepts"
         string name UK "unique, ignoring case"
         string slug UK
         text description
@@ -99,7 +99,7 @@ erDiagram
 
     PRODUCT_VARIANTS {
         bigint id PK
-        string public_id UK "ULID; the only id the API accepts"
+        string reference_id UK "ULID; the only id the API accepts"
         bigint product_id FK
         string name
         string sku UK
@@ -115,7 +115,7 @@ erDiagram
 
     MEDIA {
         bigint id PK
-        string public_id UK "ULID; the only id the API accepts"
+        string reference_id UK "ULID; the only id the API accepts"
         string collection "variant_photo or avatar"
         string disk "public or s3"
         string path UK "folder per collection, random name"
@@ -131,7 +131,7 @@ erDiagram
 
     TAGS {
         bigint id PK
-        string public_id UK "ULID; the only id the API accepts"
+        string reference_id UK "ULID; the only id the API accepts"
         string name UK
         string slug UK
         timestamp created_at

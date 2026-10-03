@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('media', function (Blueprint $table) {
             $table->id();
-            $table->ulid('public_id')->unique();
+            $table->ulid('reference_id')->unique();
             // App\Enums\MediaCollection: what the file is for (variant_photo, avatar).
             $table->string('collection', 30);
             // Disk the file was stored on, so files keep resolving if MEDIA_DISK changes later.

@@ -18,9 +18,9 @@ use Illuminate\Validation\Validator;
 
 /**
  * The whole product, sent on every save (create and update): product fields plus every variant it
- * should have. Variants with a `public_id` are updated, without one are created, and variants not sent are
+ * should have. Variants with a `reference_id` are updated, without one are created, and variants not sent are
  * deleted. Photos are media ids returned by POST /admin/uploads/variant-photos, in display order.
- * Every id here is a client-facing public id (ULID); toData() turns them into internal ids.
+ * Every id here is a client-facing reference id (ULID); toData() turns them into internal ids.
  */
 class SaveProductRequest extends FormRequest
 {
@@ -37,8 +37,8 @@ class SaveProductRequest extends FormRequest
             'is_active' => ['required', 'boolean'],
 
             'variants' => ['required', 'array', 'min:1', 'max:50'],
-            /** The variant's public_id; leave out for a new variant. */
-            'variants.*.public_id' => ['nullable', 'string', 'ulid', 'distinct', $this->ownVariant()],
+            /** The variant's reference_id; leave out for a new variant. */
+            'variants.*.reference_id' => ['nullable', 'string', 'ulid', 'distinct', $this->ownVariant()],
             /** Unique within this product, ignoring case (other products may use the same name). */
             'variants.*.name' => ['required', 'string', 'max:255', 'distinct:ignore_case'],
             'variants.*.sku' => ['required', 'string', 'max:64', 'distinct', 'regex:/^[A-Za-z0-9_-]+$/'],
@@ -51,14 +51,14 @@ class SaveProductRequest extends FormRequest
             'variants.*.stock' => ['required', 'integer', 'min:0', 'max:1000000'],
             'variants.*.is_active' => ['required', 'boolean'],
             'variants.*.tag_ids' => ['nullable', 'array'],
-            'variants.*.tag_ids.*' => ['string', 'ulid', 'distinct', Rule::exists('tags', 'public_id')],
+            'variants.*.tag_ids.*' => ['string', 'ulid', 'distinct', Rule::exists('tags', 'reference_id')],
             /** Up to 8 media ids per variant (from POST /admin/uploads/variant-photos), in display order; the first is the cover. */
             'variants.*.photo_ids' => ['nullable', 'array', 'max:8'],
             'variants.*.photo_ids.*' => [
                 'string',
                 'ulid',
                 'distinct',
-                Rule::exists('media', 'public_id')->where('collection', MediaCollection::VariantPhoto->value),
+                Rule::exists('media', 'reference_id')->where('collection', MediaCollection::VariantPhoto->value),
             ],
         ];
     }
@@ -91,11 +91,11 @@ class SaveProductRequest extends FormRequest
         ];
     }
 
-    /** Builds the save data, turning the public ids sent into internal ids (one query per kind). */
+    /** Builds the save data, turning the reference ids sent into internal ids (one query per kind). */
     public function toData(): ProductData
     {
         $variants = array_values($this->validated('variants'));
-        $variantIds = $this->internalIds(ProductVariant::class, array_filter(array_column($variants, 'public_id')));
+        $variantIds = $this->internalIds(ProductVariant::class, array_filter(array_column($variants, 'reference_id')));
         $tagIds = $this->internalIds(Tag::class, array_merge(...array_map(fn (array $variant) => $variant['tag_ids'] ?? [], $variants)));
         $photoIds = $this->internalIds(Media::class, array_merge(...array_map(fn (array $variant) => $variant['photo_ids'] ?? [], $variants)));
 
@@ -104,7 +104,7 @@ class SaveProductRequest extends FormRequest
             description: $this->validated('description'),
             isActive: (bool) $this->validated('is_active'),
             variants: array_map(fn (array $variant) => new ProductVariantData(
-                id: isset($variant['public_id']) ? $variantIds[$variant['public_id']] : null,
+                id: isset($variant['reference_id']) ? $variantIds[$variant['reference_id']] : null,
                 name: $variant['name'],
                 sku: $variant['sku'],
                 description: $variant['description'] ?? null,
@@ -112,22 +112,22 @@ class SaveProductRequest extends FormRequest
                 sellingPrice: Money::normalize((string) $variant['selling_price']),
                 stock: (int) $variant['stock'],
                 isActive: (bool) $variant['is_active'],
-                tagIds: array_map(fn (string $publicId) => $tagIds[$publicId], $variant['tag_ids'] ?? []),
-                photoIds: array_map(fn (string $publicId) => $photoIds[$publicId], array_values($variant['photo_ids'] ?? [])),
+                tagIds: array_map(fn (string $referenceId) => $tagIds[$referenceId], $variant['tag_ids'] ?? []),
+                photoIds: array_map(fn (string $referenceId) => $photoIds[$referenceId], array_values($variant['photo_ids'] ?? [])),
             ), $variants),
         );
     }
 
     /**
-     * Maps public ids to internal ids for one model.
+     * Maps reference ids to internal ids for one model.
      *
      * @param  class-string<Model>  $model
-     * @param  array<int, string>  $publicIds
+     * @param  array<int, string>  $referenceIds
      * @return array<string, int>
      */
-    private function internalIds(string $model, array $publicIds): array
+    private function internalIds(string $model, array $referenceIds): array
     {
-        return $publicIds === [] ? [] : $model::whereIn('public_id', array_values($publicIds))->pluck('id', 'public_id')->all();
+        return $referenceIds === [] ? [] : $model::whereIn('reference_id', array_values($referenceIds))->pluck('id', 'reference_id')->all();
     }
 
     /** A variant id sent must be one of this product's variants (and none can be sent when creating). */
@@ -137,7 +137,7 @@ class SaveProductRequest extends FormRequest
             $product = $this->route('product');
 
             $belongs = is_string($value) && $product instanceof Product
-                && $product->variants()->where('public_id', $value)->exists();
+                && $product->variants()->where('reference_id', $value)->exists();
 
             if (! $belongs) {
                 $fail('This variant does not belong to the product.');

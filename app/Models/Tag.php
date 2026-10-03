@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\HasPublicId;
+use App\Models\Concerns\HasReferenceId;
 use Database\Factories\TagFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Tag extends Model
 {
     /** @use HasFactory<TagFactory> */
-    use HasFactory, HasPublicId;
+    use HasFactory, HasReferenceId;
 
     /** @return BelongsToMany<ProductVariant, $this> */
     public function variants(): BelongsToMany

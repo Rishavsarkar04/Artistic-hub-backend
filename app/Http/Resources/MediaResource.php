@@ -14,9 +14,9 @@ class MediaResource extends JsonResource
     {
         return [
             /** Send this to attach the file (e.g. in variants.*.photo_ids). */
-            /** Internal database id: shown for reference only; URLs and requests take public_id. */
+            /** Internal database id: shown for reference only; URLs and requests take reference_id. */
             'id' => $this->id,
-            'public_id' => $this->public_id,
+            'reference_id' => $this->reference_id,
             'url' => $this->url(),
             'mime_type' => $this->mime_type,
             /** Bytes. */

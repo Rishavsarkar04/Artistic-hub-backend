@@ -253,9 +253,9 @@ delete); photos are stored on the media disk (S3 in production).
 
 - POST /admin/products and PUT /admin/products/{id}: the product (name,
   unique ignoring case (decided 2026-10-03), description, is_active) with `variants` (1 to 50). Each
-  variant: optional public_id, name, sku, description,
+  variant: optional reference_id, name, sku, description,
   original_price, selling_price, stock, is_active, tag_ids, photo_ids.
-  Variants with a public_id are updated (it must be this product's), without
+  Variants with a reference_id are updated (it must be this product's), without
   one are created, and variants not sent are deleted. Variant names are
   unique within the product, ignoring case (other products may reuse them). Slugs are never sent (decided 2026-10-03): the backend generates them
   from the name (product) or product slug + variant name (variant) when
@@ -407,6 +407,29 @@ form. Create and rename send `{ name }`; the backend generates the slug
 and returns 422 with a message when the name or slug is already taken.
 
 ## 8. Customer variant listing
+
+### Implemented 2026-10-03
+
+GET /api/v1/shop/product-variants (public, no sign-in; replaces the
+proposed GET /variants below). One card per buyable variant: active, of
+an active product, and in stock (stock > 0).
+
+- Query: `search` (variant and product names and descriptions, and tag
+  names), `min_price` / `max_price` (selling price; max ≥ min),
+  `tags[]` (tag **slugs**, a variant matches any of them; combined with
+  search and price using AND), `sort` = newest (default) | price_low |
+  price_high, `page`, `per_page` (default 24; no upper limit).
+- Card: id, reference_id, name, slug, product (id, reference_id, name, slug),
+  original_price, selling_price, cover_url (first photo or null), tags.
+- Also returned: `meta` (Laravel pagination; `meta.total` is the
+  "N candles" count), `filters` (as applied), `filter_options`,
+  `price_range` {min, max} (selling prices of everything buyable,
+  ignoring filters: the price slider's ends) and `tag_counts`
+  [{slug, name, count}] (how many listed variants have each tag under the
+  current search and price filters, ignoring the tag filter itself).
+- Not built: a "featured" sort (the schema has nothing to rank by; needs a
+  rule, e.g. a best-seller tag, a flag, or sales once orders exist) and
+  the single-variant detail endpoint.
 
 Support:
 - Pagination.
@@ -725,8 +748,8 @@ never reaches an admin route, and an admin token never reaches a customer
 route.
 
 Public (routes/api.php, no session):
-GET  /variants
-GET  /variants/{id}
+GET  /shop/product-variants      (built; see section 8)
+GET  /shop/product-variants/{id} (proposed)
 GET  /tags
 
 Customer — guest (routes/api/customer.php):
@@ -783,11 +806,11 @@ These names are a proposed shared frontend/backend contract.
 Adapt consistently to existing repository conventions. Section 17 lists
 where the frontend currently differs.
 
-Ids (decided 2026-10-03): records have a client-facing ULID (`public_id`,
+Ids (decided 2026-10-03): records have a client-facing ULID (`reference_id`,
 e.g. "01jbf8p2q4r6s8t0v2w4x6y8z0"). Responses return both `id` (the
-internal auto-increment id, for reference only) and `public_id`. URLs and
-request bodies only ever accept `public_id` (variants.*.public_id, and
-public ids as the values of tag_ids and photo_ids); an internal id in a
+internal auto-increment id, for reference only) and `reference_id`. URLs and
+request bodies only ever accept `reference_id` (variants.*.reference_id, and
+reference ids as the values of tag_ids and photo_ids); an internal id in a
 URL or request is a 404 or a validation error.
 
 Return decimal money as strings.
